@@ -28,6 +28,14 @@ npm install -g mcp-cross
 npm install mcp-cross
 ```
 
+### Using via npx (No Installation Required)
+
+You can use `mcp-cross` without installing it by using npx:
+
+```bash
+npx mcp-cross -- node server.js
+```
+
 Or install directly from the repository:
 
 ```bash
@@ -37,11 +45,28 @@ npm install -g .
 
 ## Usage
 
+### Direct Usage (Installed Globally)
+
 ```bash
-mcp-cross <server-command> [args...]
+mcp-cross [options] <server-command> [args...]
 ```
 
+### Via npx
+
+```bash
+npx mcp-cross [options] -- <server-command> [args...]
+```
+
+**Note:** When using npx, the `--` delimiter is recommended to separate mcp-cross options from the server command.
+
+### Options
+
+- `--debug` - Enable debug logging
+- `--` - Delimiter separating mcp-cross options from server command (recommended with npx)
+
 ### Examples
+
+#### Direct Usage
 
 ```bash
 # Launch a Node.js MCP server
@@ -55,6 +80,25 @@ mcp-cross "C:\Program Files\mcp-server\server.exe"
 
 # Launch with environment variables
 MCP_PORT=3000 mcp-cross node server.js
+
+# Enable debug mode
+mcp-cross --debug node server.js
+```
+
+#### Using npx
+
+```bash
+# Launch via npx (no installation required)
+npx mcp-cross -- node server.js
+
+# With debug mode
+npx mcp-cross --debug -- python mcp_server.py
+
+# With server arguments
+npx mcp-cross -- node server.js --port 3000 --config production
+
+# Windows executable from WSL
+npx mcp-cross -- "C:\Program Files\mcp-server\server.exe"
 ```
 
 ### Debug Mode
@@ -71,6 +115,7 @@ MCP_CROSS_DEBUG=true mcp-cross node server.js
 
 Edit your Claude Code configuration file (`~/.config/claude/config.json` on Linux/Mac or `%APPDATA%\Claude\config.json` on Windows):
 
+**Option 1: Using globally installed mcp-cross**
 ```json
 {
   "mcpServers": {
@@ -82,41 +127,63 @@ Edit your Claude Code configuration file (`~/.config/claude/config.json` on Linu
 }
 ```
 
+**Option 2: Using npx (no installation required)**
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "/path/to/your/server.js"]
+    },
+    "python-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "python", "/path/to/server.py"]
+    }
+  }
+}
+```
+
 ### VSCode with Claude Code Extension (WSL Scenario)
 
 When running VSCode in a WSL tunnel but the MCP server is on Windows:
 
-**Option 1: Windows path (auto-translated)**
+**Using globally installed mcp-cross:**
+
 ```json
 {
   "mcpServers": {
     "windows-server": {
       "command": "mcp-cross",
       "args": ["C:\\Program Files\\MyServer\\server.exe"]
-    }
-  }
-}
-```
-
-**Option 2: WSL path**
-```json
-{
-  "mcpServers": {
+    },
     "wsl-server": {
       "command": "mcp-cross",
       "args": ["node", "/mnt/c/projects/mcp-server/index.js"]
+    },
+    "node-server-with-args": {
+      "command": "mcp-cross",
+      "args": ["node", "/home/user/mcp-servers/my-server.js", "--config", "production"]
     }
   }
 }
 ```
 
-**Option 3: Node.js MCP server with arguments**
+**Using npx (no installation required):**
+
 ```json
 {
   "mcpServers": {
-    "my-node-server": {
-      "command": "mcp-cross",
-      "args": ["node", "/home/user/mcp-servers/my-server.js", "--config", "production"]
+    "windows-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "C:\\Program Files\\MyServer\\server.exe"]
+    },
+    "wsl-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "/mnt/c/projects/mcp-server/index.js"]
+    },
+    "node-server-with-args": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "/home/user/mcp-servers/my-server.js", "--config", "production"]
     }
   }
 }
@@ -126,6 +193,7 @@ When running VSCode in a WSL tunnel but the MCP server is on Windows:
 
 In your Claude Desktop configuration:
 
+**Using globally installed mcp-cross:**
 ```json
 {
   "mcpServers": {
@@ -144,16 +212,48 @@ In your Claude Desktop configuration:
 }
 ```
 
+**Using npx (no installation required):**
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/Users/username/Desktop"]
+    },
+    "custom-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "python", "/path/to/custom_server.py"],
+      "env": {
+        "API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
 ### Cline (VSCode Extension)
 
 In VSCode settings or `.vscode/settings.json`:
 
+**Using globally installed mcp-cross:**
 ```json
 {
   "cline.mcpServers": {
     "my-server": {
       "command": "mcp-cross",
       "args": ["node", "path/to/server.js"]
+    }
+  }
+}
+```
+
+**Using npx (no installation required):**
+```json
+{
+  "cline.mcpServers": {
+    "my-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "path/to/server.js"]
     }
   }
 }
@@ -179,13 +279,25 @@ This is the primary use case. When:
 - Claude Code extension runs in WSL
 - Your MCP server executable is on Windows (e.g., `C:\Program Files\...`)
 
-Configuration:
+**Configuration using globally installed mcp-cross:**
 ```json
 {
   "mcpServers": {
     "windows-mcp": {
       "command": "mcp-cross",
       "args": ["C:\\Tools\\mcp-server.exe"]
+    }
+  }
+}
+```
+
+**Configuration using npx:**
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "C:\\Tools\\mcp-server.exe"]
     }
   }
 }
@@ -201,12 +313,34 @@ Configuration:
 
 If your MCP server needs to access files on both Windows and WSL:
 
+**Using globally installed mcp-cross:**
 ```json
 {
   "mcpServers": {
     "hybrid-server": {
       "command": "mcp-cross",
       "args": [
+        "node",
+        "/mnt/c/servers/bridge.js",
+        "--windows-data",
+        "C:\\Data",
+        "--wsl-data",
+        "/home/user/data"
+      ]
+    }
+  }
+}
+```
+
+**Using npx:**
+```json
+{
+  "mcpServers": {
+    "hybrid-server": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--",
         "node",
         "/mnt/c/servers/bridge.js",
         "--windows-data",

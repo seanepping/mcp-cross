@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "example-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "/path/to/example-server.js"]
+    },
+    "python-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "python", "/path/to/server.py"],
+      "env": {
+        "API_KEY": "your-api-key"
+      }
+    },
+    "windows-server-from-wsl": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "C:\\Program Files\\MyServer\\server.exe", "--port", "3000"]
+    },
+    "filesystem-mcp": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/user/workspace"]
+    },
+    "with-debug-mode": {
+      "command": "npx",
+      "args": ["mcp-cross", "--debug", "--", "node", "/path/to/server.js"]
+    }
+  }
+}

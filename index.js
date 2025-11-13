@@ -212,20 +212,68 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.error('Usage: mcp-cross <server-command> [args...]');
+    console.error('Usage: mcp-cross [options] [--] <server-command> [args...]');
+    console.error('');
+    console.error('Options:');
+    console.error('  --debug              Enable debug logging');
+    console.error('  --                   Delimiter separating mcp-cross options from server command');
     console.error('');
     console.error('Examples:');
+    console.error('  # Direct usage');
     console.error('  mcp-cross node server.js');
     console.error('  mcp-cross python mcp_server.py');
     console.error('  mcp-cross "C:\\Program Files\\mcp-server\\server.exe"');
+    console.error('');
+    console.error('  # Via npx with delimiter');
+    console.error('  npx mcp-cross -- node server.js');
+    console.error('  npx mcp-cross --debug -- python server.py');
     console.error('');
     console.error('Environment variables:');
     console.error('  MCP_CROSS_DEBUG=true    Enable debug logging');
     process.exit(1);
   }
 
-  const serverCommand = args[0];
-  const serverArgs = args.slice(1);
+  // Parse arguments, looking for -- delimiter and options
+  let mcpCrossOptions = [];
+  let serverCommand;
+  let serverArgs = [];
+
+  const delimiterIndex = args.indexOf('--');
+
+  if (delimiterIndex !== -1) {
+    // Split args at the delimiter
+    mcpCrossOptions = args.slice(0, delimiterIndex);
+    const serverCommandArgs = args.slice(delimiterIndex + 1);
+
+    if (serverCommandArgs.length === 0) {
+      console.error('Error: No server command specified after "--"');
+      process.exit(1);
+    }
+
+    serverCommand = serverCommandArgs[0];
+    serverArgs = serverCommandArgs.slice(1);
+  } else {
+    // No delimiter, backwards compatible mode
+    // Check if first arg is an option
+    let startIndex = 0;
+    while (startIndex < args.length && args[startIndex].startsWith('--')) {
+      mcpCrossOptions.push(args[startIndex]);
+      startIndex++;
+    }
+
+    if (startIndex >= args.length) {
+      console.error('Error: No server command specified');
+      process.exit(1);
+    }
+
+    serverCommand = args[startIndex];
+    serverArgs = args.slice(startIndex + 1);
+  }
+
+  // Process mcp-cross options
+  if (mcpCrossOptions.includes('--debug')) {
+    process.env.MCP_CROSS_DEBUG = 'true';
+  }
 
   const bridge = new MCPBridge();
   await bridge.launch(serverCommand, serverArgs);

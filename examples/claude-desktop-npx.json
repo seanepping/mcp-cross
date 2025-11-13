@@ -1,0 +1,49 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/username/Documents"
+      ]
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "your-api-key-here"
+      }
+    },
+    "custom-nodejs-server": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--",
+        "node",
+        "/path/to/your/server.js",
+        "--config",
+        "production"
+      ]
+    },
+    "with-debug": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--debug",
+        "--",
+        "node",
+        "/path/to/server.js"
+      ]
+    }
+  }
+}

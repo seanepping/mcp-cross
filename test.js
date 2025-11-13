@@ -46,14 +46,24 @@ function testEnvironmentDetection() {
 function printUsageExamples() {
   console.log('Usage examples:');
   console.log('');
-  console.log('  # Test with a simple echo server');
+  console.log('  # Direct usage (backwards compatible)');
   console.log('  echo \'{"test": "data"}\' | mcp-cross node -e "process.stdin.pipe(process.stdout)"');
   console.log('');
-  console.log('  # Test with debug mode');
+  console.log('  # With delimiter (recommended for npx)');
+  console.log('  echo \'{"test": "data"}\' | mcp-cross -- node -e "process.stdin.pipe(process.stdout)"');
+  console.log('');
+  console.log('  # With debug mode');
+  console.log('  mcp-cross --debug -- node server.js');
   console.log('  MCP_CROSS_DEBUG=true mcp-cross node server.js');
   console.log('');
+  console.log('  # Via npx (no installation required)');
+  console.log('  echo \'{"test": "data"}\' | npx mcp-cross -- node -e "process.stdin.pipe(process.stdout)"');
+  console.log('');
   console.log('  # Test WSL path translation (if in WSL)');
-  console.log('  mcp-cross "C:\\\\Windows\\\\System32\\\\cmd.exe" /c echo Hello');
+  console.log('  mcp-cross -- "C:\\\\Windows\\\\System32\\\\cmd.exe" /c echo Hello');
+  console.log('');
+  console.log('  # Test with example server');
+  console.log('  echo \'{"jsonrpc": "2.0", "method": "test"}\' | mcp-cross -- node example-server.js');
   console.log('');
 }
 

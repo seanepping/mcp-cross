@@ -1,0 +1,25 @@
+{
+  "claude.mcpServers": {
+    "my-mcp-server": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "node", "${workspaceFolder}/server/mcp-server.js"]
+    },
+    "windows-executable": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "C:\\Tools\\mcp-server.exe"],
+      "env": {
+        "SERVER_PORT": "3001"
+      }
+    },
+    "with-debug": {
+      "command": "npx",
+      "args": ["mcp-cross", "--debug", "--", "python", "/path/to/server.py"]
+    }
+  },
+  "cline.mcpServers": {
+    "custom-tools": {
+      "command": "npx",
+      "args": ["mcp-cross", "--", "python", "/mnt/c/projects/mcp-tools/main.py"]
+    }
+  }
+}
