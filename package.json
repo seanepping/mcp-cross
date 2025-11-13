@@ -1,0 +1,28 @@
+{
+  "name": "mcp-cross",
+  "version": "1.0.0",
+  "description": "Cross-platform MCP server bridge for seamless stdio communication across different environments",
+  "main": "index.js",
+  "bin": {
+    "mcp-cross": "./index.js"
+  },
+  "scripts": {
+    "test": "node test.js"
+  },
+  "keywords": [
+    "mcp",
+    "cross-platform",
+    "wsl",
+    "bridge",
+    "stdio",
+    "claude",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

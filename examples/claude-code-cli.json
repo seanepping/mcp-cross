@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "example-server": {
+      "command": "mcp-cross",
+      "args": ["node", "/path/to/example-server.js"]
+    },
+    "python-server": {
+      "command": "mcp-cross",
+      "args": ["python", "/path/to/server.py"],
+      "env": {
+        "API_KEY": "your-api-key"
+      }
+    },
+    "windows-server-from-wsl": {
+      "command": "mcp-cross",
+      "args": ["C:\\Program Files\\MyServer\\server.exe", "--port", "3000"]
+    },
+    "filesystem-mcp": {
+      "command": "mcp-cross",
+      "args": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/home/user/workspace"]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "claude.mcpServers": {
+    "my-mcp-server": {
+      "command": "mcp-cross",
+      "args": ["node", "${workspaceFolder}/server/mcp-server.js"]
+    },
+    "windows-executable": {
+      "command": "mcp-cross",
+      "args": ["C:\\Tools\\mcp-server.exe"],
+      "env": {
+        "SERVER_PORT": "3001"
+      }
+    }
+  },
+  "cline.mcpServers": {
+    "custom-tools": {
+      "command": "mcp-cross",
+      "args": ["python", "/mnt/c/projects/mcp-tools/main.py"]
+    }
+  }
+}

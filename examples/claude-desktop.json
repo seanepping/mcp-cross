@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "mcp-cross",
+      "args": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/username/Documents"
+      ]
+    },
+    "brave-search": {
+      "command": "mcp-cross",
+      "args": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "your-api-key-here"
+      }
+    },
+    "custom-nodejs-server": {
+      "command": "mcp-cross",
+      "args": [
+        "node",
+        "/path/to/your/server.js",
+        "--config",
+        "production"
+      ]
+    }
+  }
+}
