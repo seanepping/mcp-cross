@@ -11,6 +11,7 @@ All AI agents working in this repository **MUST** follow this protocol at the st
 1. **Initialize Context**: Call `get_current_context()` to understand the session state and recent history.
 2. **Set Focus**: Call `set_focus(focus)` to declare the current task or objective.
 3. **Check Memory**: Call `recall_memory(query)` to check for relevant past decisions, errors, or patterns before starting work.
+4. **Store New Knowledge**: Whenever you create noteworthy fixes, release plans, or workflow tweaks, call `remember_this(...)` so future agents inherit the context.
 
 ## Core Logic
 
@@ -75,6 +76,17 @@ This project utilizes `ghostis-brain` for persistent memory and context manageme
 2. **Search First**: Before asking or implementing, search memory for similar issues or decisions.
 3. **Document Decisions**: Store architectural decisions and complex fixes using `remember_this`.
 4. **Update Focus**: Keep the session focus current to aid context retrieval.
+
+### Session Wrap-Up Workflow
+
+To keep work synced across environments (Linux, WSL, Windows, remote runners, etc.), every session should end with the following checklist:
+
+1. **Set a Wrap-Up Focus**: Call `set_focus("Session wrap-up: <short summary>")` before closing out your work. This creates a focus-history breadcrumb for downstream agents.
+2. **Capture the Summary**: Draft a concise recap covering (a) objective, (b) key changes, (c) verification/tests, and (d) outstanding follow-ups or blockers.
+3. **Persist with `remember_this`**: Store the summary plus metadata (e.g., `{ type: "session_summary", project: "mcp-cross", tags: ["beta","release-prep"], date: "YYYY-MM-DD" }`). This ensures future agents—regardless of OS—can retrieve the latest state via `recall_memory`.
+4. **Reference Memory IDs**: When possible, note the returned `memory_id` in your user reply so humans or other agents can jump straight to the handoff record.
+
+Following this routine guarantees that session continuity survives tool restarts, multi-platform hops, and relay-style handoffs.
 
 ## Development Workflow
 
