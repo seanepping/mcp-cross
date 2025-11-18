@@ -1,13 +1,31 @@
 {
   "name": "mcp-cross",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.0",
   "description": "Cross-platform MCP server bridge for seamless stdio communication across different environments",
+  "author": "Sean Epping",
+  "license": "MIT",
+  "homepage": "https://github.com/seanepping/mcp-cross#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seanepping/mcp-cross.git"
+  },
+  "bugs": {
+    "url": "https://github.com/seanepping/mcp-cross/issues"
+  },
   "main": "index.js",
   "bin": {
     "mcp-cross": "./index.js"
   },
+  "files": [
+    "index.js",
+    "example-server.js",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "test": "node test.js"
+    "test": "node test.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "mcp",
@@ -15,13 +33,17 @@
     "wsl",
     "bridge",
     "stdio",
-    "claude",
-    "ai"
+    "ghostis",
+    "ai",
+    "cli",
+    "tooling"
   ],
-  "author": "",
-  "license": "MIT",
   "engines": {
     "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
   },
   "dependencies": {},
   "devDependencies": {}

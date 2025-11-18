@@ -1,10 +1,20 @@
 # mcp-cross
 
-Cross-platform MCP server bridge for seamless stdio communication across different environments.
+Cross-platform MCP server bridge for seamless stdio communication across different environments, mainly for accessing linux mcp servers from windows in WSL2.
 
 ## Overview
 
 `mcp-cross` is a Node.js CLI tool that acts as a bridge between AI coding tools and MCP (Model Context Protocol) servers. It handles the complexity of launching MCP servers across different operating systems and environments, with special support for WSL (Windows Subsystem for Linux) scenarios.
+
+## Release status
+
+> ⚠️ `mcp-cross` is currently shipped as a **pre-release (beta)** while we finish hardening Windows↔WSL workflows.
+
+- Install globally with the beta dist-tag: `npm install -g mcp-cross@beta`
+- Run ad-hoc from npm: `npx mcp-cross@beta -- node server.js`
+- Pin a specific beta (e.g., `npm install -g mcp-cross@1.0.0-beta.0`) for deterministic test environments.
+
+Expect rapid iteration: features and flags may change between beta drops until we promote a stable `latest` release.
 
 ### Key Features
 
@@ -78,6 +88,9 @@ mcp-cross python mcp_server.py --port 3000
 # Launch a Windows executable from WSL
 mcp-cross "C:\Program Files\mcp-server\server.exe"
 
+# Detailed WSL bridge example with env + config
+MCP_CROSS_DEBUG=true mcp-cross "C:\Tools\MyServer\server.exe" --config beta
+
 # Launch with environment variables
 MCP_PORT=3000 mcp-cross node server.js
 
@@ -99,6 +112,9 @@ npx mcp-cross -- node server.js --port 3000 --config production
 
 # Windows executable from WSL
 npx mcp-cross -- "C:\Program Files\mcp-server\server.exe"
+
+# Windows executable from WSL with explicit beta tag
+npx mcp-cross@beta -- "C:\Tools\MyServer\server.exe" --port 5005
 ```
 
 ### Debug Mode
@@ -115,7 +131,8 @@ MCP_CROSS_DEBUG=true mcp-cross node server.js
 
 Edit your Claude Code configuration file (`~/.config/claude/config.json` on Linux/Mac or `%APPDATA%\Claude\config.json` on Windows):
 
-**Option 1: Using globally installed mcp-cross**
+#### Option 1: Using globally installed mcp-cross
+
 ```json
 {
   "mcpServers": {
@@ -127,7 +144,8 @@ Edit your Claude Code configuration file (`~/.config/claude/config.json` on Linu
 }
 ```
 
-**Option 2: Using npx (no installation required)**
+#### Option 2: Using npx (no installation required)
+
 ```json
 {
   "mcpServers": {
@@ -147,7 +165,7 @@ Edit your Claude Code configuration file (`~/.config/claude/config.json` on Linu
 
 When running VSCode in a WSL tunnel but the MCP server is on Windows:
 
-**Using globally installed mcp-cross:**
+#### VSCode: Using globally installed mcp-cross
 
 ```json
 {
@@ -168,7 +186,7 @@ When running VSCode in a WSL tunnel but the MCP server is on Windows:
 }
 ```
 
-**Using npx (no installation required):**
+#### VSCode: Using npx (no installation required)
 
 ```json
 {
@@ -193,7 +211,8 @@ When running VSCode in a WSL tunnel but the MCP server is on Windows:
 
 In your Claude Desktop configuration:
 
-**Using globally installed mcp-cross:**
+#### Claude Desktop: Using globally installed mcp-cross
+
 ```json
 {
   "mcpServers": {
@@ -212,7 +231,8 @@ In your Claude Desktop configuration:
 }
 ```
 
-**Using npx (no installation required):**
+#### Claude Desktop: Using npx (no installation required)
+
 ```json
 {
   "mcpServers": {
@@ -235,7 +255,8 @@ In your Claude Desktop configuration:
 
 In VSCode settings or `.vscode/settings.json`:
 
-**Using globally installed mcp-cross:**
+#### Cline: Using globally installed mcp-cross
+
 ```json
 {
   "cline.mcpServers": {
@@ -247,7 +268,8 @@ In VSCode settings or `.vscode/settings.json`:
 }
 ```
 
-**Using npx (no installation required):**
+#### Cline: Using npx (no installation required)
+
 ```json
 {
   "cline.mcpServers": {
@@ -275,11 +297,14 @@ In VSCode settings or `.vscode/settings.json`:
 ### Scenario 1: VSCode in WSL Tunnel + Claude Code in WSL + MCP Server on Windows
 
 This is the primary use case. When:
+
 - VSCode is running via Remote-WSL
 - Claude Code extension runs in WSL
 - Your MCP server executable is on Windows (e.g., `C:\Program Files\...`)
 
-**Configuration using globally installed mcp-cross:**
+
+#### Scenario 1: Configuration using globally installed mcp-cross
+
 ```json
 {
   "mcpServers": {
@@ -291,7 +316,8 @@ This is the primary use case. When:
 }
 ```
 
-**Configuration using npx:**
+#### Scenario 1: Configuration using npx
+
 ```json
 {
   "mcpServers": {
@@ -304,6 +330,7 @@ This is the primary use case. When:
 ```
 
 `mcp-cross` will:
+
 1. Detect WSL environment
 2. Translate `C:\Tools\mcp-server.exe` to `/mnt/c/Tools/mcp-server.exe`
 3. Launch the Windows executable from WSL
@@ -313,7 +340,8 @@ This is the primary use case. When:
 
 If your MCP server needs to access files on both Windows and WSL:
 
-**Using globally installed mcp-cross:**
+#### Scenario 2: Using globally installed mcp-cross
+
 ```json
 {
   "mcpServers": {
@@ -332,7 +360,8 @@ If your MCP server needs to access files on both Windows and WSL:
 }
 ```
 
-**Using npx:**
+#### Scenario 2: Using npx
+
 ```json
 {
   "mcpServers": {
@@ -363,11 +392,13 @@ If your MCP server needs to access files on both Windows and WSL:
 ### Server Not Starting
 
 Enable debug mode:
+
 ```bash
 MCP_CROSS_DEBUG=true mcp-cross your-command
 ```
 
 Check the debug output for:
+
 - Path translation issues
 - Command resolution problems
 - Process spawning errors
@@ -375,11 +406,13 @@ Check the debug output for:
 ### Windows Executable Not Found in WSL
 
 Ensure:
+
 1. The path uses Windows format (e.g., `C:\...`) or WSL format (e.g., `/mnt/c/...`)
 2. The executable exists at the specified path
 3. You have execute permissions
 
 Test path translation:
+
 ```bash
 wslpath "C:\Program Files\MyApp\app.exe"
 ```
@@ -387,6 +420,7 @@ wslpath "C:\Program Files\MyApp\app.exe"
 ### Permission Denied
 
 Make sure the executable has execute permissions:
+
 ```bash
 chmod +x /path/to/server
 ```
@@ -401,7 +435,7 @@ npm test
 
 ### Project Structure
 
-```
+```text
 mcp-cross/
 ├── index.js          # Main CLI entry point and bridge logic
 ├── package.json      # NPM package configuration
