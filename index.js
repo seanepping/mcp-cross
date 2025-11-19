@@ -259,8 +259,15 @@ async function main() {
     // Check if first arg is an option
     let startIndex = 0;
     while (startIndex < args.length && args[startIndex].startsWith('--')) {
-      mcpCrossOptions.push(args[startIndex]);
+      const arg = args[startIndex];
+      mcpCrossOptions.push(arg);
       startIndex++;
+
+      // Handle options that take a value
+      if (arg === '--distro' && startIndex < args.length && !args[startIndex].startsWith('--')) {
+        mcpCrossOptions.push(args[startIndex]);
+        startIndex++;
+      }
     }
 
     if (startIndex >= args.length) {

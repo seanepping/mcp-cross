@@ -116,31 +116,37 @@ class WSLBridge {
    * @param {string[]} mcpCrossOptions - Options passed to mcp-cross
    */
   async execute(command, args, mcpCrossOptions = []) {
-    if (!this.isWindows) {
-      throw new Error('WSL bridge can only be used on Windows');
-    }
+    let spawnCommand, spawnArgs;
 
-    // Parse options
-    const options = {};
-    const distroIndex = mcpCrossOptions.indexOf('--distro');
-    if (distroIndex !== -1 && distroIndex + 1 < mcpCrossOptions.length) {
-      options.distro = mcpCrossOptions[distroIndex + 1];
-    }
+    if (this.isWindows) {
+      // Parse options
+      const options = {};
+      const distroIndex = mcpCrossOptions.indexOf('--distro');
+      if (distroIndex !== -1 && distroIndex + 1 < mcpCrossOptions.length) {
+        options.distro = mcpCrossOptions[distroIndex + 1];
+      }
 
-    const wslCommand = this.getWSLCommand(command, args, options);
+      const wslCommand = this.getWSLCommand(command, args, options);
+      spawnCommand = wslCommand.command;
+      spawnArgs = wslCommand.args;
+    } else {
+      // Not on Windows (e.g. already in WSL), execute directly
+      spawnCommand = command;
+      spawnArgs = args;
+    }
     
-    // Spawn the WSL process
-    const child = child_process.spawn(wslCommand.command, wslCommand.args, {
+    // Spawn the process
+    const child = child_process.spawn(spawnCommand, spawnArgs, {
       stdio: ['pipe', 'pipe', 'inherit'],
       env: process.env // Pass environment variables (FR-010)
     });
 
     // Handle process errors
     child.on('error', (err) => {
-      if (err.code === 'ENOENT') {
+      if (this.isWindows && err.code === 'ENOENT' && spawnCommand === 'wsl.exe') {
         console.error('Error: wsl.exe not found. Please ensure WSL is installed.');
       } else {
-        console.error('Failed to start WSL process:', err.message);
+        console.error(`Failed to start process '${spawnCommand}':`, err.message);
       }
       process.exit(1);
     });
