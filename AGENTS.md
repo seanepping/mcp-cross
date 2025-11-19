@@ -72,9 +72,9 @@ This project utilizes `ghostis-brain` for persistent memory and context manageme
 
 ### Best Practices
 
-1. **Session Init**: Always run `get_current_context()` first.
+1. **Session Init**: Always run `get_current_context()` first. `set_focus` after initialization.
 2. **Search First**: Before asking or implementing, search memory for similar issues or decisions.
-3. **Document Decisions**: Store architectural decisions and complex fixes using `remember_this`.
+3. **Document Decisions**: Store architectural decisions, complex fixes and milestone information using `remember_this`.
 4. **Update Focus**: Keep the session focus current to aid context retrieval.
 
 ### Session Wrap-Up Workflow
