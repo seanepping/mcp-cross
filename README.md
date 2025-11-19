@@ -302,7 +302,6 @@ This is the primary use case. When:
 - Claude Code extension runs in WSL
 - Your MCP server executable is on Windows (e.g., `C:\Program Files\...`)
 
-
 #### Scenario 1: Configuration using globally installed mcp-cross
 
 ```json
