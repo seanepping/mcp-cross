@@ -73,6 +73,7 @@ As a user with multiple WSL distributions, I want to specify which distribution 
 - **Spaces in Paths**: Paths with spaces must be preserved as single arguments when passed to `wsl.exe`.
 - **Special Characters**: Paths containing special characters (e.g., `&`, `$`, `(`, `)`) MUST be correctly escaped/quoted to prevent shell interpretation in WSL.
 - **UNC Paths**: UNC paths (e.g., `\\server\share`) are NOT supported in this version and should be passed through as-is or trigger a warning.
+- **Case Sensitivity**: Path translation MUST preserve the casing of the Windows path when translating to WSL. Note: `/mnt/c` mounts usually support case-insensitivity, but users should aim for correct casing.
 - **WSL Not Installed**: If `wsl.exe` is missing or fails, report a clear error.
 - **Mixed Environments**: Running `--wsl` from *within* WSL should probably error or just run locally (since we are already in WSL), or maybe support nested WSL (unlikely use case).
 
