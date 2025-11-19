@@ -466,6 +466,32 @@ Make sure the executable has execute permissions:
 chmod +x /path/to/server
 ```
 
+### "Command not found" in WSL (e.g., node, npm)
+
+If you see errors like `zsh:1: command not found: node` or `bash: node: command not found` when using `--wsl`, it usually means the command is not in the system PATH of your WSL distribution.
+
+This is common if you use version managers like `nvm` or `pyenv`, which configure PATH in interactive shell profiles (`.bashrc`, `.zshrc`), but `mcp-cross` (via `wsl.exe`) runs commands in a non-interactive shell.
+
+**Solutions:**
+
+1. **Use the absolute path** to the executable in WSL:
+
+   ```bash
+   mcp-cross --wsl /home/user/.nvm/versions/node/v18.0.0/bin/node server.js
+   ```
+
+   *(Tip: Run `which node` inside WSL to find this path)*
+
+2. **Wrap the command in a login shell**:
+
+   ```bash
+   mcp-cross --wsl bash -l -c "node server.js"
+   ```
+
+   *(Note: This might complicate argument quoting)*
+
+3. **Install the tool globally** in WSL (e.g., via `apt` or `brew`) so it's in `/usr/bin` or `/bin`.
+
 ## Development
 
 ### Running Tests
