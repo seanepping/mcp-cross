@@ -5,6 +5,68 @@
  */
 
 const MCPBridge = require('./index.js');
+const wslBridge = require('./src/lib/wsl-bridge.js');
+
+function testWSLBridge() {
+  console.log('Testing WSL Bridge module...');
+
+  // Test 1: Path Translation
+  const pathTests = [
+    ['C:\\Users\\test\\file.txt', '/mnt/c/Users/test/file.txt'],
+    ['D:\\Projects\\code', '/mnt/d/Projects/code'],
+    ['c:\\lower\\case', '/mnt/c/lower/case'],
+    ['E:\\With Spaces\\File.txt', '/mnt/e/With Spaces/File.txt']
+  ];
+
+  console.log('  Testing translateWindowsPathToWSL:');
+  pathTests.forEach(([input, expected]) => {
+    const result = wslBridge.translateWindowsPathToWSL(input);
+    const status = result === expected ? '✓' : '✗';
+    console.log(`    ${status} ${input} -> ${result}`);
+    if (result !== expected) console.error(`      Expected: ${expected}, Got: ${result}`);
+  });
+
+  // Test 2: Command Construction
+  console.log('  Testing getWSLCommand:');
+  
+  const cmd1 = wslBridge.getWSLCommand('node', ['server.js'], {});
+  const status1 = cmd1.command === 'wsl.exe' && cmd1.args.join(' ') === 'node server.js' ? '✓' : '✗';
+  console.log(`    ${status1} Basic command: ${JSON.stringify(cmd1)}`);
+
+  const cmd2 = wslBridge.getWSLCommand('node', ['server.js'], { distro: 'Ubuntu' });
+  const status2 = cmd2.command === 'wsl.exe' && cmd2.args.join(' ') === '-d Ubuntu node server.js' ? '✓' : '✗';
+  console.log(`    ${status2} With distro: ${JSON.stringify(cmd2)}`);
+
+  const cmd3 = wslBridge.getWSLCommand('C:\\Tools\\tool.exe', [], {});
+  const status3 = cmd3.command === 'wsl.exe' && cmd3.args[0] === '/mnt/c/Tools/tool.exe' ? '✓' : '✗';
+  console.log(`    ${status3} Command translation: ${JSON.stringify(cmd3)}`);
+
+  // Test 3: Tilde Expansion (Mocking os.homedir if not on Windows)
+  if (require('os').platform() !== 'win32') {
+      // Mock os.homedir for testing logic on Linux
+      const originalHomedir = require('os').homedir;
+      require('os').homedir = () => 'C:\\Users\\TestUser';
+      
+      const tildeArgs = ['~', '~\\Documents', '~/Downloads'];
+      const translatedTilde = wslBridge.translateArgs(tildeArgs);
+      
+      const status4 = translatedTilde[0] === '/mnt/c/Users/TestUser' ? '✓' : '✗';
+      console.log(`    ${status4} Tilde expansion (~): ${translatedTilde[0]}`);
+      
+      const status5 = translatedTilde[1] === '/mnt/c/Users/TestUser/Documents' ? '✓' : '✗';
+      console.log(`    ${status5} Tilde expansion (~\\): ${translatedTilde[1]}`);
+
+      const status6 = translatedTilde[2] === '/mnt/c/Users/TestUser/Downloads' ? '✓' : '✗';
+      console.log(`    ${status6} Tilde expansion (~/): ${translatedTilde[2]}`);
+
+      // Restore
+      require('os').homedir = originalHomedir;
+    } else {
+      console.log('    Skipping tilde expansion test (requires mocking on Windows)');
+    }
+
+  console.log('');
+}
 
 function testPathTranslation() {
   console.log('Testing path translation...');
@@ -70,6 +132,7 @@ function printUsageExamples() {
 // Run tests
 console.log('=== mcp-cross Test Suite ===\n');
 testEnvironmentDetection();
+testWSLBridge();
 testPathTranslation();
 printUsageExamples();
 

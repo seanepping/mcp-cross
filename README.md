@@ -281,16 +281,58 @@ In VSCode settings or `.vscode/settings.json`:
 }
 ```
 
+## Windows to WSL Bridge
+
+`mcp-cross` supports launching MCP servers located in WSL directly from Windows. This is useful when your development environment and tools are in WSL, but you are using a Windows-based client (like Claude Desktop or VS Code on Windows).
+
+### Bridge Usage
+
+Use the `--wsl` flag to indicate the target server is in WSL.
+
+```bash
+# Launch a Node.js server in the default WSL distro
+mcp-cross --wsl node /home/user/server.js
+
+# Launch in a specific distro
+mcp-cross --wsl --distro Ubuntu-20.04 node /home/user/server.js
+```
+
+### Automatic Path Translation
+
+When using `--wsl`, `mcp-cross` automatically translates Windows file paths in arguments to their WSL equivalents.
+
+```bash
+# Windows path C:\data.txt becomes /mnt/c/data.txt in WSL
+mcp-cross --wsl cat C:\data.txt
+```
+
+### Configuration Example (Claude Desktop on Windows)
+
+```json
+{
+  "mcpServers": {
+    "wsl-server": {
+      "command": "npx",
+      "args": [
+        "mcp-cross",
+        "--wsl",
+        "node",
+        "/home/user/server.js"
+      ]
+    }
+  }
+}
+```
+
 ## How It Works
 
 1. **Command Resolution**: `mcp-cross` receives the MCP server command and arguments
-2. **Path Translation**: If running in WSL, Windows paths are automatically translated to WSL paths using `wslpath`
-3. **Process Spawning**: The MCP server is spawned as a child process with proper stdio configuration
-4. **Stdio Bridging**:
-   - Parent stdin → MCP server stdin
-   - MCP server stdout → Parent stdout
-   - MCP server stderr → Parent stderr (inherited)
-5. **Signal Handling**: Gracefully handles SIGINT and SIGTERM to clean up child processes
+2. **Path Translation**:
+   - **WSL -> Windows**: If running in WSL, Windows paths are translated to WSL paths using `wslpath`
+   - **Windows -> WSL**: If running on Windows with `--wsl`, Windows paths are translated to `/mnt/c/...` format
+3. **Process Spawning**: The MCP server is spawned as a child process (or `wsl.exe` child process)
+4. **Stdio Bridging**: Seamlessly pipes stdin/stdout/stderr
+5. **Signal Handling**: Propagates SIGINT/SIGTERM to the child process
 
 ## WSL-Specific Scenarios
 
@@ -423,6 +465,32 @@ Make sure the executable has execute permissions:
 ```bash
 chmod +x /path/to/server
 ```
+
+### "Command not found" in WSL (e.g., node, npm)
+
+If you see errors like `zsh:1: command not found: node` or `bash: node: command not found` when using `--wsl`, it usually means the command is not in the system PATH of your WSL distribution.
+
+This is common if you use version managers like `nvm` or `pyenv`, which configure PATH in interactive shell profiles (`.bashrc`, `.zshrc`), but `mcp-cross` (via `wsl.exe`) runs commands in a non-interactive shell.
+
+**Solutions:**
+
+1. **Use the absolute path** to the executable in WSL:
+
+   ```bash
+   mcp-cross --wsl /home/user/.nvm/versions/node/v18.0.0/bin/node server.js
+   ```
+
+   *(Tip: Run `which node` inside WSL to find this path)*
+
+2. **Wrap the command in a login shell**:
+
+   ```bash
+   mcp-cross --wsl bash -l -c "node server.js"
+   ```
+
+   *(Note: This might complicate argument quoting)*
+
+3. **Install the tool globally** in WSL (e.g., via `apt` or `brew`) so it's in `/usr/bin` or `/bin`.
 
 ## Development
 
