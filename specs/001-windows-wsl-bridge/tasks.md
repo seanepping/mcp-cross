@@ -9,13 +9,13 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create `src/lib/` directory and `src/lib/wsl-bridge.js` module skeleton
+- [x] T001 Create `src/lib/` directory and `src/lib/wsl-bridge.js` module skeleton
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 **Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
 
-- [ ] T002 Refactor `src/index.js` to support modular bridge logic (prepare for delegation to `wsl-bridge.js`)
+- [x] T002 Refactor `src/index.js` to support modular bridge logic (prepare for delegation to `wsl-bridge.js`)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -27,10 +27,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Implement `detectWSL` (check if on Windows) and `getWSLCommand` in `src/lib/wsl-bridge.js`
-- [ ] T004 [US1] Update `src/index.js` to parse `--wsl` flag and delegate execution to `wsl-bridge.js`
-- [ ] T005 [US1] Implement process spawning and stdio piping for `wsl.exe` in `src/lib/wsl-bridge.js`
-- [ ] T013 [US1] Implement signal propagation (SIGINT, SIGTERM) in `src/lib/wsl-bridge.js`
+- [x] T003 [US1] Implement `detectWSL` (check if on Windows) and `getWSLCommand` in `src/lib/wsl-bridge.js`
+- [x] T004 [US1] Update `src/index.js` to parse `--wsl` flag and delegate execution to `wsl-bridge.js`
+- [x] T005 [US1] Implement process spawning and stdio piping for `wsl.exe` in `src/lib/wsl-bridge.js`
+- [x] T013 [US1] Implement signal propagation (SIGINT, SIGTERM) in `src/lib/wsl-bridge.js`
 
 **Checkpoint**: User Story 1 should be fully functional (launching commands without path translation)
 
@@ -42,9 +42,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Implement `resolveRelativePath` in `src/lib/wsl-bridge.js` to convert relative paths to absolute Windows paths
-- [ ] T007 [US2] Implement `translateWindowsPathToWSL` in `src/lib/wsl-bridge.js` using the heuristic strategy (drive letter conversion)
-- [ ] T008 [US2] Implement argument parsing loop in `src/lib/wsl-bridge.js` to identify and translate paths before spawning
+- [x] T006 [US2] Implement `resolveRelativePath` in `src/lib/wsl-bridge.js` to convert relative paths to absolute Windows paths
+- [x] T007 [US2] Implement `translateWindowsPathToWSL` in `src/lib/wsl-bridge.js` using the heuristic strategy (drive letter conversion)
+- [x] T008 [US2] Implement argument parsing loop in `src/lib/wsl-bridge.js` to identify and translate paths before spawning
 
 **Checkpoint**: User Stories 1 AND 2 should both work independently
 
@@ -56,8 +56,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] Update `src/index.js` to parse `--distro` flag and pass to bridge
-- [ ] T010 [US3] Update `getWSLCommand` in `src/lib/wsl-bridge.js` to inject `-d <distro>` into `wsl.exe` arguments
+- [x] T009 [US3] Update `src/index.js` to parse `--distro` flag and pass to bridge
+- [x] T010 [US3] Update `getWSLCommand` in `src/lib/wsl-bridge.js` to inject `-d <distro>` into `wsl.exe` arguments
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -65,5 +65,5 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T011 Update `README.md` with new usage instructions and examples
-- [ ] T012 Add unit tests for path translation logic in `test.js`
+- [x] T011 Update `README.md` with new usage instructions and examples
+- [x] T012 Add unit tests for path translation logic in `test.js`

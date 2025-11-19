@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 const { existsSync } = require('fs');
 const { resolve, isAbsolute, sep } = require('path');
 const { platform } = require('os');
+const wslBridge = require('./src/lib/wsl-bridge');
 
 /**
  * mcp-cross - Cross-platform MCP server bridge
@@ -215,18 +216,19 @@ async function main() {
     console.error('Usage: mcp-cross [options] [--] <server-command> [args...]');
     console.error('');
     console.error('Options:');
+    console.error('  --wsl                Bridge to WSL environment (Windows only)');
+    console.error('  --distro <name>      Target specific WSL distribution');
     console.error('  --debug              Enable debug logging');
     console.error('  --                   Delimiter separating mcp-cross options from server command');
     console.error('');
     console.error('Examples:');
     console.error('  # Direct usage');
     console.error('  mcp-cross node server.js');
-    console.error('  mcp-cross python mcp_server.py');
-    console.error('  mcp-cross "C:\\Program Files\\mcp-server\\server.exe"');
+    console.error('  mcp-cross --wsl node /home/user/server.js');
     console.error('');
     console.error('  # Via npx with delimiter');
     console.error('  npx mcp-cross -- node server.js');
-    console.error('  npx mcp-cross --debug -- python server.py');
+    console.error('  npx mcp-cross --wsl -- node /home/user/server.js');
     console.error('');
     console.error('Environment variables:');
     console.error('  MCP_CROSS_DEBUG=true    Enable debug logging');
@@ -273,6 +275,17 @@ async function main() {
   // Process mcp-cross options
   if (mcpCrossOptions.includes('--debug')) {
     process.env.MCP_CROSS_DEBUG = 'true';
+  }
+
+  // Check for WSL bridge mode
+  if (mcpCrossOptions.includes('--wsl')) {
+    try {
+      await wslBridge.execute(serverCommand, serverArgs, mcpCrossOptions);
+    } catch (err) {
+      console.error('WSL Bridge Error:', err.message);
+      process.exit(1);
+    }
+    return;
   }
 
   const bridge = new MCPBridge();
