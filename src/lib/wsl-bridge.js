@@ -49,7 +49,16 @@ class WSLBridge {
         return this.translateWindowsPathToWSL(arg);
       }
 
-      // Heuristic 2: Relative path that exists locally
+      // Heuristic 2: Home directory expansion (~)
+      // Handles ~\ or ~/ or just ~
+      if (arg === '~' || arg.startsWith('~\\') || arg.startsWith('~/')) {
+        const home = os.homedir();
+        // If arg is just ~, use home. If ~\foo, join home + foo
+        const expanded = arg === '~' ? home : path.join(home, arg.slice(2));
+        return this.translateWindowsPathToWSL(expanded);
+      }
+
+      // Heuristic 3: Relative path that exists locally
       try {
         const resolved = path.resolve(process.cwd(), arg);
         if (fs.existsSync(resolved)) {
