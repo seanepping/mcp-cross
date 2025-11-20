@@ -8,6 +8,19 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+// Standard Windows environment variables to exclude from WSLENV
+const WINDOWS_ENV_BLACKLIST = new Set([
+  'ALLUSERSPROFILE', 'APPDATA', 'COMMONPROGRAMFILES', 'COMMONPROGRAMFILES(X86)',
+  'COMMONPROGRAMW6432', 'COMPUTERNAME', 'COMSPEC', 'DRIVERDATA', 'HOMEDRIVE',
+  'HOMEPATH', 'LOCALAPPDATA', 'LOGONSERVER', 'NUMBER_OF_PROCESSORS', 'OS',
+  'PATH', 'PATHEXT', 'PROCESSOR_ARCHITECTURE', 'PROCESSOR_IDENTIFIER',
+  'PROCESSOR_LEVEL', 'PROCESSOR_REVISION', 'PROGRAMDATA', 'PROGRAMFILES',
+  'PROGRAMFILES(X86)', 'PROGRAMW6432', 'PSMODULEPATH', 'PUBLIC', 'SYSTEMDRIVE',
+  'SYSTEMROOT', 'TEMP', 'TMP', 'USERDOMAIN', 'USERDOMAIN_ROAMINGPROFILE',
+  'USERNAME', 'USERPROFILE', 'WINDIR', 'WSLENV', 'WT_PROFILE_ID', 'WT_SESSION',
+  'ORIGINAL_XDG_CURRENT_DESKTOP'
+]);
+
 class WSLBridge {
   constructor() {
     this.isWindows = os.platform() === 'win32';
@@ -117,6 +130,7 @@ class WSLBridge {
    */
   async execute(command, args, mcpCrossOptions = []) {
     let spawnCommand, spawnArgs;
+    const envForSpawn = { ...process.env };
 
     if (this.isWindows) {
       // Parse options
@@ -129,6 +143,38 @@ class WSLBridge {
       const wslCommand = this.getWSLCommand(command, args, options);
       spawnCommand = wslCommand.command;
       spawnArgs = wslCommand.args;
+
+      // Prepare WSLENV to bridge environment variables
+      // We want to pass user-defined variables that are not standard Windows system variables
+      const varsToPass = Object.keys(envForSpawn).filter(key => {
+        const upperKey = key.toUpperCase();
+        // Exclude standard Windows variables
+        if (WINDOWS_ENV_BLACKLIST.has(upperKey)) return false;
+        // Exclude npm internal variables to avoid bloating WSLENV
+        if (upperKey.startsWith('NPM_')) return false;
+        return true;
+      });
+
+      // Construct WSLENV string
+      // Format: VAR1:VAR2/p:VAR3
+      // We append to existing WSLENV if present
+      const existingWslEnv = envForSpawn.WSLENV ? envForSpawn.WSLENV.split(':') : [];
+      const newWslEnvParts = [...existingWslEnv];
+
+      for (const key of varsToPass) {
+        // Check if already present (case-insensitive check for safety, though WSLENV is case-sensitive for flags)
+        // We'll just check exact match or match with flags
+        const isPresent = newWslEnvParts.some(part => 
+          part === key || part.startsWith(key + '/')
+        );
+        
+        if (!isPresent) {
+          newWslEnvParts.push(key);
+        }
+      }
+
+      envForSpawn.WSLENV = newWslEnvParts.join(':');
+
     } else {
       // Not on Windows (e.g. already in WSL), execute directly
       spawnCommand = command;
@@ -138,7 +184,7 @@ class WSLBridge {
     // Spawn the process
     const child = child_process.spawn(spawnCommand, spawnArgs, {
       stdio: ['pipe', 'pipe', 'inherit'],
-      env: process.env // Pass environment variables (FR-010)
+      env: envForSpawn // Pass environment variables (FR-010)
     });
 
     // Handle process errors
