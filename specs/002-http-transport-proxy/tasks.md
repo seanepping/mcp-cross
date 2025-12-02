@@ -1,222 +1,232 @@
-# Implementation Tasks: HTTP Transport Proxy
+# Tasks: HTTP Transport Proxy
 
-**Feature ID**: 002-http-transport-proxy
-**Status**: Planning
+**Input**: Design documents from `/specs/002-http-transport-proxy/`
+**Prerequisites**: plan.md ✅, spec.md ✅, research.md ✅, data-model.md ✅, quickstart.md ✅
 
-## Phase 1: Core HTTP Proxy (MVP)
+**Tests**: Not explicitly requested in spec. Unit tests included for critical functions only.
 
-### Task 1.1: HTTP Transport Module
-**Priority**: P1
-**Estimate**: 2-3 hours
+**Organization**: Tasks grouped by user story to enable independent implementation and testing.
 
-- [ ] Create `src/lib/http-transport.js`
-- [ ] Implement `HTTPTransport` class with:
-  - Constructor accepting URL and headers
-  - `sendRequest(jsonRpcMessage)` method
-  - HTTP POST to endpoint with JSON body
-  - Response parsing (JSON)
-  - Error handling (network errors, HTTP errors)
-- [ ] Add request timeout support
-- [ ] Add debug logging
+## Format: `[ID] [P?] [Story] Description`
 
-**Acceptance**:
-- Can send JSON-RPC message to HTTP endpoint
-- Receives and parses JSON response
-- Handles HTTP 4xx/5xx errors
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (US1, US2, etc.)
+- Include exact file paths in descriptions
+
+## Path Conventions
+
+- **Single project**: `src/lib/` for modules, `index.js` as entry point
+- **Tests**: `tests/` directory
+- **Examples**: `examples/` directory
 
 ---
 
-### Task 1.2: Header Parsing with Environment Variable Expansion
-**Priority**: P1
-**Estimate**: 1 hour
+## Phase 1: Setup
 
-- [ ] Create `parseHeaders(headerArgs, env)` function
-- [ ] Support `--header "Name: Value"` format
-- [ ] Expand `$VAR` and `${VAR}` patterns
-- [ ] Handle missing variables (resolve to empty string, warn)
-- [ ] Support multiple headers
+**Purpose**: Project structure preparation for HTTP proxy feature
 
-**Acceptance**:
-- `--header "Auth: Bearer $TOKEN"` expands correctly
-- Multiple `--header` flags work
-- Missing env vars produce warning but don't fail
+- [ ] T001 Create tests/ directory structure for http-proxy tests
+- [ ] T002 [P] Create example config files directory structure in examples/
 
 ---
 
-### Task 1.3: CLI Integration
-**Priority**: P1
-**Estimate**: 1-2 hours
+## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] Add `--http <url>` argument parsing in `index.js`
-- [ ] Add `--header <header>` argument (repeatable)
-- [ ] Add `--timeout <ms>` argument
-- [ ] URL validation (must be http:// or https://)
-- [ ] Update help text
+**Purpose**: Core infrastructure that MUST be complete before user story implementation
 
-**Acceptance**:
-- `mcp-cross --http https://example.com/mcp` starts proxy
-- Headers are parsed and passed to transport
-- Invalid URLs produce clear error
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
----
+- [ ] T003 Implement header parser with environment variable expansion in src/lib/header-parser.js
+- [ ] T004 [P] Implement URL validator for HTTP/HTTPS endpoints in src/lib/url-validator.js
+- [ ] T005 [P] Implement JSON-RPC error formatter in src/lib/jsonrpc-error.js
+- [ ] T006 Unit test for header parser (env var expansion, validation) in tests/header-parser.test.js
+- [ ] T007 [P] Unit test for URL validator in tests/url-validator.test.js
 
-### Task 1.4: Stdio-to-HTTP Bridge
-**Priority**: P1
-**Estimate**: 2 hours
-
-- [ ] Implement readline-based stdin reading
-- [ ] JSON-RPC message parsing
-- [ ] Forward to HTTP transport
-- [ ] Write response to stdout
-- [ ] Handle JSON parse errors (return -32700)
-- [ ] Handle empty lines / whitespace
-
-**Acceptance**:
-- JSON-RPC messages flow stdin → HTTP → stdout
-- Malformed JSON returns proper error
-- Process stays alive waiting for input
+**Checkpoint**: Foundation ready - user story implementation can begin
 
 ---
 
-### Task 1.5: WSL Integration for HTTP Mode
-**Priority**: P1
-**Estimate**: 1-2 hours
+## Phase 3: User Story 1 - Access HTTP MCP Server with WSL-Stored Token (Priority: P1) 🎯 MVP
 
-- [ ] Support `--wsl --http` combination
-- [ ] Ensure env vars are resolved in WSL context
-- [ ] Update `wsl-bridge.js` to handle HTTP mode
-- [ ] Pass headers with expanded env vars to WSL subprocess
+**Goal**: Enable Windows users to access HTTP MCP servers (like GitHub's) with tokens stored in WSL
 
-**Acceptance**:
-- `--wsl --http` runs proxy in WSL
-- `$GH_TOKEN` resolves from WSL environment
-- Full flow works: Windows Claude → WSL proxy → HTTP server
+**Independent Test**: Configure Claude Desktop with stdio → http proxy, verify GitHub MCP server responds to tool calls
 
----
+### Implementation for User Story 1
 
-## Phase 2: Enhanced Protocol Support
+- [ ] T008 [US1] Create HTTPProxyConfig class in src/lib/http-proxy.js (url, headers, timeout, debug fields per data-model.md)
+- [ ] T009 [US1] Create HTTPProxySession class in src/lib/http-proxy.js (sessionId, isActive, requestCount fields)
+- [ ] T010 [US1] Implement sendRequest() method using built-in fetch in src/lib/http-proxy.js
+- [ ] T010a [US1] Implement JSON-RPC batch array detection and response handling in src/lib/http-proxy.js (FR-011)
+- [ ] T011 [US1] Implement HTTP error to JSON-RPC error conversion in src/lib/http-proxy.js
+- [ ] T012 [US1] Implement stdin readline loop with NDJSON parsing in src/lib/http-proxy.js
+- [ ] T013 [US1] Implement stdout JSON-RPC response writer in src/lib/http-proxy.js
+- [ ] T014 [US1] Add --http flag parsing to CLI argument handler in index.js
+- [ ] T015 [US1] Add --header flag parsing (repeatable) to CLI in index.js
+- [ ] T016 [US1] Add --timeout flag parsing with 60000ms default in index.js
+- [ ] T017 [US1] Integrate http-proxy module with existing --wsl mode in index.js
+- [ ] T018 [US1] Handle SIGINT/SIGTERM for graceful shutdown in src/lib/http-proxy.js
+- [ ] T019 [US1] Add HTTPS warning for non-localhost HTTP URLs in src/lib/http-proxy.js
+- [ ] T020 [US1] Integration test: mock HTTP server with token auth in tests/http-proxy.test.js
 
-### Task 2.1: Session Management
-**Priority**: P2
-**Estimate**: 1-2 hours
-
-- [ ] Parse `Mcp-Session-Id` from response headers
-- [ ] Include session ID in subsequent requests
-- [ ] Handle session expiration/renewal
-- [ ] Send DELETE on graceful shutdown
-
-**Acceptance**:
-- Session ID is maintained across requests
-- Stateful servers work correctly
+**Checkpoint**: User Story 1 complete - Windows → WSL → HTTP flow works with token authentication
 
 ---
 
-### Task 2.2: SSE Streaming Support
-**Priority**: P2
-**Estimate**: 3-4 hours
+## Phase 4: User Story 2 - Standard HTTP Proxy (Non-WSL) (Priority: P2)
 
-- [ ] Implement `openSSEStream()` method
-- [ ] Parse SSE event format (`event:`, `data:`, `id:`)
-- [ ] Forward SSE messages to stdout
-- [ ] Support `Last-Event-ID` for resumption
-- [ ] Handle connection drops and reconnection
+**Goal**: Enable developers to use `--http` without `--wsl` for local proxying and debugging
 
-**Acceptance**:
-- SSE streams are correctly parsed
-- Messages appear on stdout
-- Reconnection works with event replay
+**Independent Test**: Run `mcp-cross --http https://example.com/mcp` directly, verify stdin → HTTP → stdout flow
 
----
+### Implementation for User Story 2
 
-### Task 2.3: Batch Request Support
-**Priority**: P2
-**Estimate**: 1 hour
+- [ ] T021 [US2] Ensure --http works independently of --wsl flag in index.js
+- [ ] T022 [US2] Add --debug flag for verbose logging in index.js
+- [ ] T023 [US2] Implement debug logging (mask sensitive header values) in src/lib/http-proxy.js
+- [ ] T024 [US2] Add multiple --header support verification in tests/http-proxy.test.js
+- [ ] T025 [US2] Create example config for local development in examples/claude-desktop-http.json
+- [ ] T026 [P] [US2] Create VS Code settings example in examples/vscode-settings-http.json
 
-- [ ] Detect JSON-RPC batch (array) format
-- [ ] Send batch as single HTTP request
-- [ ] Parse batch response
-- [ ] Forward individual responses
-
-**Acceptance**:
-- Array of requests sent as batch
-- Array of responses received and forwarded
+**Checkpoint**: User Story 2 complete - Local HTTP proxy works for debugging
 
 ---
 
-## Phase 3: Robustness & Polish
+## Phase 5: User Story 4 - Session Management (Priority: P3)
 
-### Task 3.1: Error Handling Improvements
-**Priority**: P2
-**Estimate**: 1-2 hours
+**Goal**: Maintain MCP session state across requests for stateful servers
 
-- [ ] Map HTTP status codes to JSON-RPC errors
-- [ ] Include helpful error messages
-- [ ] Handle network timeouts gracefully
-- [ ] Handle SSL/TLS errors with clear messages
-- [ ] Rate limit errors (429) handling
+**Note**: User Story 3 (SSE) is DEFERRED to v1.1 per spec.md FR-008
 
-**Acceptance**:
-- All error scenarios produce valid JSON-RPC errors
-- Error messages are actionable
+**Independent Test**: Verify Mcp-Session-Id header is echoed back on subsequent requests
 
----
+### Implementation for User Story 4
 
-### Task 3.2: Security Hardening
-**Priority**: P2
-**Estimate**: 1-2 hours
+- [ ] T027 [US4] Capture Mcp-Session-Id from response headers in src/lib/http-proxy.js
+- [ ] T028 [US4] Include session ID in subsequent request headers in src/lib/http-proxy.js
+- [ ] T029 [US4] Send DELETE request on session cleanup (graceful shutdown) in src/lib/http-proxy.js
+- [ ] T030 [US4] Unit test for session ID management in tests/http-proxy.test.js
 
-- [ ] Mask tokens in debug output
-- [ ] Validate header names (no injection)
-- [ ] Warn on non-HTTPS non-localhost URLs
-- [ ] Set appropriate `Origin` header
-
-**Acceptance**:
-- Debug logs don't expose full tokens
-- Security warnings are shown
+**Checkpoint**: User Story 4 complete - Stateful MCP servers supported
 
 ---
 
-### Task 3.3: Documentation
-**Priority**: P2
-**Estimate**: 1-2 hours
+## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] Update README.md with HTTP proxy section
-- [ ] Add example configurations
-- [ ] Document security considerations
-- [ ] Add troubleshooting guide
+**Purpose**: Documentation, examples, and final validation
 
-**Acceptance**:
-- Users can configure HTTP proxy from docs
-- Common issues are documented
+- [ ] T031 [P] Update README.md with HTTP proxy usage examples
+- [ ] T032 [P] Update package.json version for beta release
+- [ ] T033 Verify all edge cases from spec.md (malformed JSON, network timeout, large payloads)
+- [ ] T034 Run quickstart.md validation scenarios manually
+- [ ] T035 [P] Add JSDoc comments to exported functions in src/lib/http-proxy.js
+- [ ] T036 Final integration test: GitHub MCP server with real token (manual E2E)
 
 ---
 
-### Task 3.4: Tests
-**Priority**: P2
-**Estimate**: 2-3 hours
+## Dependencies & Execution Order
 
-- [ ] Unit tests for header parsing
-- [ ] Unit tests for env var expansion
-- [ ] Integration tests with mock HTTP server
-- [ ] E2E test script for manual testing
+### Phase Dependencies
 
-**Acceptance**:
-- Core functionality has test coverage
-- CI passes
+```text
+Phase 1 (Setup)
+    │
+    ▼
+Phase 2 (Foundational) ──── BLOCKS ALL USER STORIES
+    │
+    ├────────────────────────────────┬─────────────────────────────┐
+    ▼                                ▼                             ▼
+Phase 3 (US1 - P1)           Phase 4 (US2 - P2)           Phase 5 (US4 - P3)
+    │                                │                             │
+    └────────────────────────────────┴─────────────────────────────┘
+                                     │
+                                     ▼
+                           Phase 6 (Polish)
+```
+
+### User Story Dependencies
+
+- **User Story 1 (P1)**: Can start after Phase 2 - Core MVP functionality
+- **User Story 2 (P2)**: Can start after Phase 2 - Extends US1 with debug features
+- **User Story 4 (P3)**: Can start after Phase 2 - Independent session management
+
+### Within Each User Story
+
+- Config/model classes before methods
+- Core methods before CLI integration
+- Implementation before tests
+- Story complete before moving to next priority
+
+### Parallel Opportunities
+
+**Phase 2 (Foundational)**:
+
+```text
+T003 (header-parser.js)  ║  T004 (url-validator.js)  ║  T005 (jsonrpc-error.js)
+                         ║                           ║
+T006 (test header)       ║  T007 (test url)          ║
+```
+
+**Phase 3 (US1) - Models**:
+
+```text
+T008 (HTTPProxyConfig)   ║  T009 (HTTPProxySession)
+```
+
+**Phase 3 (US1) - CLI flags**:
+
+```text
+T014 (--http)  ║  T015 (--header)  ║  T016 (--timeout)
+```
+
+**Phase 4 (US2) - Examples**:
+
+```text
+T025 (claude-desktop)  ║  T026 (vscode-settings)
+```
+
+**Phase 6 (Polish)**:
+
+```text
+T031 (README)  ║  T032 (package.json)  ║  T035 (JSDoc)
+```
 
 ---
 
-## Summary
+## Implementation Strategy
 
-| Phase | Tasks | Estimated Time |
-|-------|-------|----------------|
-| Phase 1 (MVP) | 5 tasks | 7-10 hours |
-| Phase 2 (Enhanced) | 3 tasks | 5-7 hours |
-| Phase 3 (Polish) | 4 tasks | 5-9 hours |
-| **Total** | **12 tasks** | **17-26 hours** |
+### MVP First (User Story 1 Only)
 
-## Dependencies
+1. Complete Phase 1: Setup (T001-T002)
+2. Complete Phase 2: Foundational (T003-T007)
+3. Complete Phase 3: User Story 1 (T008-T020)
+4. **STOP and VALIDATE**: Test with Claude Desktop → WSL → GitHub MCP
+5. Deploy beta if ready
 
-- Node.js built-in `http`/`https` modules
-- Node.js built-in `readline` module
-- Existing `wsl-bridge.js` module
+### Incremental Delivery
+
+1. Setup + Foundational → Foundation ready
+2. Add User Story 1 → Test independently → **MVP Release** 🎯
+3. Add User Story 2 → Test independently → Add debug support
+4. Add User Story 4 → Test independently → Add session support
+5. Polish → Final beta release
+
+### Suggested MVP Scope
+
+**Minimal viable release includes**:
+
+- Phase 1: Setup (2 tasks)
+- Phase 2: Foundational (5 tasks)
+- Phase 3: User Story 1 (13 tasks)
+- **Total MVP: 20 tasks**
+
+---
+
+## Notes
+
+- [P] tasks = different files, no dependencies
+- [Story] label maps task to specific user story for traceability
+- User Story 3 (SSE) is DEFERRED to v1.1 - not included in tasks
+- Each user story should be independently completable and testable
+- Commit after each task or logical group
+- Stop at any checkpoint to validate story independently

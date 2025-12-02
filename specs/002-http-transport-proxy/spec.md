@@ -56,6 +56,17 @@ Extend `mcp-cross` with an `--http` mode that acts as a **stdio-to-HTTP proxy**.
 }
 ```
 
+### Out of Scope (MVP)
+
+The following features are explicitly **not included** in the MVP release:
+
+- **OAuth2 flows**: No built-in token refresh or OAuth2 authentication handling
+- **Request caching**: No caching of responses; every request goes to the HTTP server
+- **Rate limiting**: No built-in rate limiting; rely on server-side enforcement
+- **Certificate pinning**: No TLS certificate pinning options
+- **Request/response transformation**: No middleware-style message modification
+- **SSE streaming**: Server-Sent Events deferred to v1.1 (see FR-008)
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Access HTTP MCP Server with WSL-Stored Token (Priority: P1)
@@ -87,11 +98,11 @@ As a developer, I want to use `mcp-cross --http` without `--wsl` to proxy HTTP M
 
 ---
 
-### User Story 3 - Support Streamable HTTP with SSE (Priority: P2)
+### User Story 3 - Support Streamable HTTP with SSE (Priority: DEFERRED v1.1)
 
 As a user of MCP servers that use Server-Sent Events (SSE) for streaming, I want the proxy to handle SSE responses, so that I can use servers that send notifications or streaming responses.
 
-**Why this priority**: Required for full MCP compatibility, but many simple use cases (like GitHub MCP) work with simple request/response.
+**Why this priority**: Deferred to v1.1. Required for full MCP compatibility, but many simple use cases (like GitHub MCP) work with simple request/response. See FR-008.
 
 **Acceptance Scenarios**:
 
@@ -119,10 +130,10 @@ As a user of stateful MCP servers, I want the proxy to maintain session state ac
 - **FR-002**: System MUST accept `--header "Name: Value"` flag (repeatable) for custom HTTP headers.
 - **FR-003**: System MUST expand environment variables in header values (e.g., `$GH_TOKEN` or `${GH_TOKEN}`).
 - **FR-004**: When combined with `--wsl`, environment variables MUST be resolved from the WSL environment.
-- **FR-005**: System MUST read JSON-RPC messages from stdin and forward them as HTTP POST requests.
+- **FR-005**: System MUST read newline-delimited JSON-RPC messages from stdin (one complete JSON message per line) and forward them as HTTP POST requests.
 - **FR-006**: System MUST write HTTP responses to stdout as JSON-RPC messages.
 - **FR-007**: System MUST handle HTTP errors and convert them to JSON-RPC error responses.
-- **FR-008**: System SHOULD support SSE responses for streaming servers (Content-Type: text/event-stream).
+- **FR-008**: [DEFERRED v1.1] System MAY support SSE responses for streaming servers (Content-Type: text/event-stream). MVP supports JSON responses only.
 - **FR-009**: System SHOULD maintain `Mcp-Session-Id` header across requests within a session.
 - **FR-010**: System MUST validate that the URL is a valid HTTP/HTTPS URL.
 - **FR-011**: System MUST support request batching (JSON-RPC batch requests as arrays).
@@ -139,7 +150,8 @@ As a user of stateful MCP servers, I want the proxy to maintain session state ac
 
 - **Empty stdin**: Proxy should wait for input, not exit immediately.
 - **Malformed JSON**: Return JSON-RPC parse error (-32700) without crashing.
-- **Network timeout**: Return JSON-RPC internal error (-32603) with descriptive message.
+- **Network timeout**: Return JSON-RPC internal error (-32603) immediately with descriptive message (no retry).
+- **Network errors**: All network failures (DNS, connection refused, timeout) return errors immediately without retry; client is responsible for retry logic if desired.
 - **SSL/TLS errors**: Report clearly (certificate issues, etc.).
 - **Large payloads**: Support reasonable payload sizes (at least 1MB).
 - **Concurrent requests**: Buffer and serialize if needed (MCP typically uses sequential request/response).
@@ -168,7 +180,7 @@ As a user of stateful MCP servers, I want the proxy to maintain session state ac
 
 ### Component Design
 
-#### 1. HTTP Transport Module (`src/lib/http-transport.js`)
+#### 1. HTTP Transport Module (`src/lib/http-proxy.js`)
 
 ```javascript
 class HTTPTransport {
@@ -231,7 +243,7 @@ Options:
                          Environment variables ($VAR) are expanded
   --wsl                  Run in WSL (env vars resolved from WSL)
   --distro <name>        Target specific WSL distribution
-  --timeout <ms>         HTTP request timeout (default: 30000)
+  --timeout <ms>         HTTP request timeout (default: 60000)
   --debug                Enable debug logging
 
 Examples:
@@ -340,6 +352,16 @@ Examples:
 3. **Request Transformation**: Middleware-style request/response transformation
 4. **Caching**: Optional caching of resource responses
 5. **Rate Limiting**: Built-in rate limiting for API protection
+
+## Clarifications
+
+### Session 2025-12-02
+
+- Q: Which message framing protocol for stdin? → A: Newline-delimited JSON (one complete JSON message per line)
+- Q: How to handle network errors (timeout, DNS, connection refused)? → A: Return JSON-RPC error immediately (no retry)
+- Q: Should SSE streaming be in MVP? → A: No; MVP is request/response only, SSE deferred to v1.1
+- Q: Default HTTP request timeout? → A: 60 seconds (configurable via --timeout)
+- Q: What is explicitly out of scope for MVP? → A: OAuth2 flows, request caching, rate limiting, certificate pinning, request/response transformation
 
 ## References
 

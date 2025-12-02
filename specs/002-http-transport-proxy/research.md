@@ -2,8 +2,87 @@
 
 **Feature ID**: 002-http-transport-proxy
 **Date**: 2025-12-02
+**Phase**: 0 (Outline & Research)
 
-## MCP HTTP Transport Overview
+## Research Summary
+
+This document consolidates findings from specification clarifications and technical research. All "NEEDS CLARIFICATION" items have been resolved.
+
+---
+
+## Resolved Decisions
+
+### Decision 1: Message Framing Protocol
+
+**Decision**: Newline-delimited JSON (NDJSON)
+
+**Rationale**: 
+- One complete JSON message per line, terminated by `\n`
+- Simple to parse with `readline` module
+- No length-prefix overhead
+- Compatible with streaming and piping
+- Standard pattern in MCP stdio implementations
+
+**Alternatives Considered**:
+- Length-prefixed framing: More complex, requires buffering
+- JSON-RPC batch in single message: Limits streaming capability
+- Custom delimiter: Non-standard, harder to debug
+
+---
+
+### Decision 2: Network Error Handling
+
+**Decision**: Return JSON-RPC error immediately, no retry
+
+**Rationale**:
+- Simplifies implementation (stateless proxy)
+- Client is responsible for retry logic if desired
+- Avoids masking transient failures
+- Faster feedback to user
+
+**Alternatives Considered**:
+- Exponential backoff retry: Adds complexity, may mask issues
+- Configurable retry count: Over-engineered for MVP
+- Queue and retry: Requires state management
+
+---
+
+### Decision 3: SSE Support Scope
+
+**Decision**: Deferred to v1.1 (MVP is request/response only)
+
+**Rationale**:
+- GitHub MCP server works with simple POST/JSON
+- SSE parsing adds significant complexity
+- Most common use cases are synchronous
+- Allows faster MVP delivery
+
+**Alternatives Considered**:
+- Include basic SSE in MVP: Scope creep, delays delivery
+- Never support SSE: Limits future compatibility
+
+---
+
+### Decision 4: Default Timeout
+
+**Decision**: 60 seconds (configurable via `--timeout`)
+
+**Rationale**:
+- Long enough for complex MCP operations
+- Standard timeout for API requests
+- User can override for slow servers
+- Matches common HTTP client defaults
+
+**Alternatives Considered**:
+- 30 seconds: May be too short for large responses
+- No timeout: Dangerous, could hang indefinitely
+- Per-request timeout: Over-engineered for MVP
+
+---
+
+## Technical Research
+
+### MCP HTTP Transport Protocol (2025-03-26)
 
 The Model Context Protocol supports multiple transport mechanisms. The HTTP transport is defined in the [MCP Specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports).
 
