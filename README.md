@@ -22,6 +22,7 @@ Expect rapid iteration: features and flags may change between beta drops until w
 - **Stdio bridging**: Seamlessly pipes stdin/stdout between the host and MCP server
 - **Environment forwarding**: Passes environment variables and arguments to the MCP server
 - **WSL support**: Handles running Windows executables from WSL environments
+- **HTTP proxy mode**: Bridge stdio to HTTP-based MCP servers with environment variable expansion
 - **Universal compatibility**: Works with Claude Code CLI, VSCode extensions, and desktop apps
 
 ## Installation
@@ -71,6 +72,11 @@ npx mcp-cross [options] -- <server-command> [args...]
 
 ### Options
 
+- `--wsl` - Bridge to WSL environment (Windows only)
+- `--distro <name>` - Target specific WSL distribution
+- `--http <url>` - HTTP proxy mode: target HTTP MCP endpoint URL
+- `--header <header>` - Add custom header (format: "Name: Value", repeatable)
+- `--timeout <ms>` - HTTP request timeout (default: 60000)
 - `--debug` - Enable debug logging
 - `--` - Delimiter separating mcp-cross options from server command (recommended with npx)
 
@@ -284,6 +290,99 @@ In VSCode settings or `.vscode/settings.json`:
 ## Windows to WSL Bridge
 
 `mcp-cross` supports launching MCP servers located in WSL directly from Windows. This is useful when your development environment and tools are in WSL, but you are using a Windows-based client (like Claude Desktop or VS Code on Windows).
+
+## HTTP Proxy Mode
+
+`mcp-cross` can act as a stdio-to-HTTP proxy, allowing you to access HTTP-based MCP servers (like GitHub's MCP) through a stdio interface. This is particularly useful when authentication tokens are stored in WSL but the MCP client runs on Windows.
+
+### The Problem
+
+When you have an HTTP MCP server that requires authentication:
+
+```json
+{
+  "github-mcp-server": {
+    "type": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "headers": {
+      "Authorization": "Bearer $GH_TOKEN"
+    }
+  }
+}
+```
+
+If `$GH_TOKEN` is stored in WSL (e.g., in `~/.bashrc`), the Windows MCP client can't access it.
+
+### The Solution
+
+Use `mcp-cross` with `--wsl --http` to proxy through WSL:
+
+```json
+{
+  "github-mcp-server": {
+    "type": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-cross@beta",
+      "--wsl",
+      "--http", "https://api.githubcopilot.com/mcp/",
+      "--header", "Authorization: Bearer $GH_TOKEN"
+    ]
+  }
+}
+```
+
+The proxy runs in WSL where `$GH_TOKEN` is accessible, expands the environment variable, and forwards requests to the HTTP endpoint.
+
+### HTTP Proxy Examples
+
+```bash
+# Basic HTTP proxy
+mcp-cross --http https://api.example.com/mcp
+
+# With authentication header (environment variable expanded)
+mcp-cross --http https://api.example.com/mcp --header "Authorization: Bearer $TOKEN"
+
+# Via WSL for secret access (primary use case)
+mcp-cross --wsl --http https://api.githubcopilot.com/mcp/ --header "Authorization: Bearer $GH_TOKEN"
+
+# Multiple headers
+mcp-cross --http https://api.example.com/mcp \
+  --header "Authorization: Bearer $TOKEN" \
+  --header "X-Tenant-ID: $TENANT_ID"
+
+# Custom timeout
+mcp-cross --http https://api.example.com/mcp --timeout 30000
+
+# Debug mode
+mcp-cross --debug --http https://api.example.com/mcp
+```
+
+### HTTP Proxy Architecture
+
+```text
+Claude Desktop (Windows)
+        │
+        │ stdio (JSON-RPC)
+        ▼
+   mcp-cross --wsl --http
+   (runs in WSL via wsl.exe)
+        │
+        │ reads $GH_TOKEN from WSL env
+        │
+        │ HTTP POST (JSON-RPC)
+        ▼
+GitHub MCP Server (api.githubcopilot.com)
+```
+
+### HTTP Proxy Features
+
+- **Environment variable expansion**: `$VAR` and `${VAR}` syntax in header values
+- **Session management**: Automatically handles `Mcp-Session-Id` headers
+- **Error handling**: HTTP errors converted to JSON-RPC error responses
+- **Graceful shutdown**: Clean session cleanup on SIGINT/SIGTERM
+- **Security**: Warns for non-localhost HTTP (recommends HTTPS)
 
 ### Bridge Usage
 

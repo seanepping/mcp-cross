@@ -5,6 +5,7 @@ const { existsSync } = require('fs');
 const { resolve, isAbsolute, sep } = require('path');
 const { platform } = require('os');
 const wslBridge = require('./src/lib/wsl-bridge');
+const { startHttpProxy } = require('./src/lib/http-proxy');
 
 /**
  * mcp-cross - Cross-platform MCP server bridge
@@ -214,17 +215,34 @@ async function main() {
 
   if (args.length === 0) {
     console.error('Usage: mcp-cross [options] [--] <server-command> [args...]');
+    console.error('       mcp-cross --http <url> [options]');
+    console.error('');
+    console.error('Modes:');
+    console.error('  Process bridge    Bridge stdio to a child process (default)');
+    console.error('  HTTP proxy        Bridge stdio to an HTTP MCP server (--http)');
     console.error('');
     console.error('Options:');
     console.error('  --wsl                Bridge to WSL environment (Windows only)');
     console.error('  --distro <name>      Target specific WSL distribution');
+    console.error('  --http <url>         HTTP proxy mode: target HTTP MCP endpoint URL');
+    console.error('  --header <header>    Add custom header (format: "Name: Value")');
+    console.error('                       Can be specified multiple times');
+    console.error('                       Environment variables ($VAR) are expanded');
+    console.error('  --timeout <ms>       HTTP request timeout (default: 60000)');
     console.error('  --debug              Enable debug logging');
-    console.error('  --                   Delimiter separating mcp-cross options from server command');
+    console.error('  --                   Delimiter separating options from server command');
     console.error('');
     console.error('Examples:');
-    console.error('  # Direct usage');
+    console.error('  # Direct process bridge');
     console.error('  mcp-cross node server.js');
     console.error('  mcp-cross --wsl node /home/user/server.js');
+    console.error('');
+    console.error('  # HTTP proxy mode');
+    console.error('  mcp-cross --http https://api.example.com/mcp');
+    console.error('  mcp-cross --http https://api.example.com/mcp --header "Authorization: Bearer $TOKEN"');
+    console.error('');
+    console.error('  # HTTP proxy via WSL (for WSL-stored tokens)');
+    console.error('  mcp-cross --wsl --http https://api.githubcopilot.com/mcp/ --header "Authorization: Bearer $GH_TOKEN"');
     console.error('');
     console.error('  # Via npx with delimiter');
     console.error('  npx mcp-cross -- node server.js');
@@ -235,56 +253,127 @@ async function main() {
     process.exit(1);
   }
 
-  // Parse arguments, looking for -- delimiter and options
+  // Parse arguments with support for HTTP proxy options
   let mcpCrossOptions = [];
-  let serverCommand;
+  let serverCommand = null;
   let serverArgs = [];
+  let httpUrl = null;
+  let httpHeaders = [];
+  let httpTimeout = 60000;
 
   const delimiterIndex = args.indexOf('--');
 
-  if (delimiterIndex !== -1) {
-    // Split args at the delimiter
-    mcpCrossOptions = args.slice(0, delimiterIndex);
-    const serverCommandArgs = args.slice(delimiterIndex + 1);
+  // Parse all arguments before the delimiter (or all args if no delimiter)
+  const optionArgs = delimiterIndex !== -1 ? args.slice(0, delimiterIndex) : args;
+  const commandArgs = delimiterIndex !== -1 ? args.slice(delimiterIndex + 1) : [];
 
-    if (serverCommandArgs.length === 0) {
-      console.error('Error: No server command specified after "--"');
-      process.exit(1);
-    }
+  let i = 0;
+  while (i < optionArgs.length) {
+    const arg = optionArgs[i];
 
-    serverCommand = serverCommandArgs[0];
-    serverArgs = serverCommandArgs.slice(1);
-  } else {
-    // No delimiter, backwards compatible mode
-    // Check if first arg is an option
-    let startIndex = 0;
-    while (startIndex < args.length && args[startIndex].startsWith('--')) {
-      const arg = args[startIndex];
-      mcpCrossOptions.push(arg);
-      startIndex++;
-
-      // Handle options that take a value
-      if (arg === '--distro' && startIndex < args.length && !args[startIndex].startsWith('--')) {
-        mcpCrossOptions.push(args[startIndex]);
-        startIndex++;
+    if (arg === '--http' && i + 1 < optionArgs.length) {
+      httpUrl = optionArgs[i + 1];
+      mcpCrossOptions.push(arg, httpUrl);
+      i += 2;
+    } else if (arg === '--header' && i + 1 < optionArgs.length) {
+      httpHeaders.push(optionArgs[i + 1]);
+      mcpCrossOptions.push(arg, optionArgs[i + 1]);
+      i += 2;
+    } else if (arg === '--timeout' && i + 1 < optionArgs.length) {
+      httpTimeout = parseInt(optionArgs[i + 1], 10);
+      if (isNaN(httpTimeout) || httpTimeout <= 0) {
+        console.error('Error: --timeout must be a positive number');
+        process.exit(1);
       }
+      mcpCrossOptions.push(arg, optionArgs[i + 1]);
+      i += 2;
+    } else if (arg === '--distro' && i + 1 < optionArgs.length) {
+      mcpCrossOptions.push(arg, optionArgs[i + 1]);
+      i += 2;
+    } else if (arg.startsWith('--')) {
+      mcpCrossOptions.push(arg);
+      i++;
+    } else {
+      // First non-option is the server command (if no delimiter was used)
+      if (delimiterIndex === -1) {
+        serverCommand = arg;
+        serverArgs = optionArgs.slice(i + 1);
+      }
+      break;
     }
-
-    if (startIndex >= args.length) {
-      console.error('Error: No server command specified');
-      process.exit(1);
-    }
-
-    serverCommand = args[startIndex];
-    serverArgs = args.slice(startIndex + 1);
   }
 
-  // Process mcp-cross options
+  // If delimiter was used, command comes from after delimiter
+  if (delimiterIndex !== -1) {
+    if (commandArgs.length > 0) {
+      serverCommand = commandArgs[0];
+      serverArgs = commandArgs.slice(1);
+    }
+  }
+
+  // Process debug flag first
   if (mcpCrossOptions.includes('--debug')) {
     process.env.MCP_CROSS_DEBUG = 'true';
   }
 
-  // Check for WSL bridge mode
+  // HTTP proxy mode
+  if (httpUrl) {
+    const httpArgs = {
+      url: httpUrl,
+      headers: httpHeaders,
+      timeout: httpTimeout,
+      debug: mcpCrossOptions.includes('--debug')
+    };
+
+    // If --wsl is specified, we need to run the HTTP proxy in WSL
+    if (mcpCrossOptions.includes('--wsl')) {
+      // Build the command to run mcp-cross in HTTP mode inside WSL
+      const wslCommand = 'npx';
+      const wslArgs = [
+        '-y', 'mcp-cross@beta',
+        '--http', httpUrl
+      ];
+      
+      // Add headers
+      for (const header of httpHeaders) {
+        wslArgs.push('--header', header);
+      }
+      
+      // Add timeout
+      wslArgs.push('--timeout', String(httpTimeout));
+      
+      // Add debug if enabled
+      if (mcpCrossOptions.includes('--debug')) {
+        wslArgs.push('--debug');
+      }
+
+      try {
+        await wslBridge.execute(wslCommand, wslArgs, mcpCrossOptions);
+      } catch (err) {
+        console.error('WSL HTTP Proxy Error:', err.message);
+        process.exit(1);
+      }
+      return;
+    }
+
+    // Run HTTP proxy directly
+    try {
+      await startHttpProxy(httpArgs, process.env);
+    } catch (err) {
+      console.error('HTTP Proxy Error:', err.message);
+      process.exit(1);
+    }
+    return;
+  }
+
+  // Process bridge mode requires a server command
+  if (!serverCommand) {
+    console.error('Error: No server command specified');
+    console.error('Use --http <url> for HTTP proxy mode, or specify a server command');
+    process.exit(1);
+  }
+
+  // Check for WSL bridge mode (process bridge)
   if (mcpCrossOptions.includes('--wsl')) {
     try {
       await wslBridge.execute(serverCommand, serverArgs, mcpCrossOptions);

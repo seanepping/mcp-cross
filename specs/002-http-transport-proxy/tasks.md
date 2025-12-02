@@ -25,8 +25,8 @@
 
 **Purpose**: Project structure preparation for HTTP proxy feature
 
-- [ ] T001 Create tests/ directory structure for http-proxy tests
-- [ ] T002 [P] Create example config files directory structure in examples/
+- [X] T001 Create tests/ directory structure for http-proxy tests
+- [X] T002 [P] Create example config files directory structure in examples/
 
 ---
 
@@ -36,11 +36,11 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Implement header parser with environment variable expansion in src/lib/header-parser.js
-- [ ] T004 [P] Implement URL validator for HTTP/HTTPS endpoints in src/lib/url-validator.js
-- [ ] T005 [P] Implement JSON-RPC error formatter in src/lib/jsonrpc-error.js
-- [ ] T006 Unit test for header parser (env var expansion, validation) in tests/header-parser.test.js
-- [ ] T007 [P] Unit test for URL validator in tests/url-validator.test.js
+- [X] T003 Implement header parser with environment variable expansion in src/lib/header-parser.js
+- [X] T004 [P] Implement URL validator for HTTP/HTTPS endpoints in src/lib/url-validator.js
+- [X] T005 [P] Implement JSON-RPC error formatter in src/lib/jsonrpc-error.js
+- [X] T006 Unit test for header parser (env var expansion, validation) in tests/header-parser.test.js
+- [X] T007 [P] Unit test for URL validator in tests/url-validator.test.js
 
 **Checkpoint**: Foundation ready - user story implementation can begin
 
@@ -54,20 +54,20 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Create HTTPProxyConfig class in src/lib/http-proxy.js (url, headers, timeout, debug fields per data-model.md)
-- [ ] T009 [US1] Create HTTPProxySession class in src/lib/http-proxy.js (sessionId, isActive, requestCount fields)
-- [ ] T010 [US1] Implement sendRequest() method using built-in fetch in src/lib/http-proxy.js
-- [ ] T010a [US1] Implement JSON-RPC batch array detection and response handling in src/lib/http-proxy.js (FR-011)
-- [ ] T011 [US1] Implement HTTP error to JSON-RPC error conversion in src/lib/http-proxy.js
-- [ ] T012 [US1] Implement stdin readline loop with NDJSON parsing in src/lib/http-proxy.js
-- [ ] T013 [US1] Implement stdout JSON-RPC response writer in src/lib/http-proxy.js
-- [ ] T014 [US1] Add --http flag parsing to CLI argument handler in index.js
-- [ ] T015 [US1] Add --header flag parsing (repeatable) to CLI in index.js
-- [ ] T016 [US1] Add --timeout flag parsing with 60000ms default in index.js
-- [ ] T017 [US1] Integrate http-proxy module with existing --wsl mode in index.js
-- [ ] T018 [US1] Handle SIGINT/SIGTERM for graceful shutdown in src/lib/http-proxy.js
-- [ ] T019 [US1] Add HTTPS warning for non-localhost HTTP URLs in src/lib/http-proxy.js
-- [ ] T020 [US1] Integration test: mock HTTP server with token auth in tests/http-proxy.test.js
+- [X] T008 [US1] Create HTTPProxyConfig class in src/lib/http-proxy.js (url, headers, timeout, debug fields per data-model.md)
+- [X] T009 [US1] Create HTTPProxySession class in src/lib/http-proxy.js (sessionId, isActive, requestCount fields)
+- [X] T010 [US1] Implement sendRequest() method using built-in fetch in src/lib/http-proxy.js
+- [X] T010a [US1] Implement JSON-RPC batch array detection and response handling in src/lib/http-proxy.js (FR-011)
+- [X] T011 [US1] Implement HTTP error to JSON-RPC error conversion in src/lib/http-proxy.js
+- [X] T012 [US1] Implement stdin readline loop with NDJSON parsing in src/lib/http-proxy.js
+- [X] T013 [US1] Implement stdout JSON-RPC response writer in src/lib/http-proxy.js
+- [X] T014 [US1] Add --http flag parsing to CLI argument handler in index.js
+- [X] T015 [US1] Add --header flag parsing (repeatable) to CLI in index.js
+- [X] T016 [US1] Add --timeout flag parsing with 60000ms default in index.js
+- [X] T017 [US1] Integrate http-proxy module with existing --wsl mode in index.js
+- [X] T018 [US1] Handle SIGINT/SIGTERM for graceful shutdown in src/lib/http-proxy.js
+- [X] T019 [US1] Add HTTPS warning for non-localhost HTTP URLs in src/lib/http-proxy.js
+- [X] T020 [US1] Integration test: mock HTTP server with token auth in tests/http-proxy.test.js
 
 **Checkpoint**: User Story 1 complete - Windows → WSL → HTTP flow works with token authentication
 
@@ -81,12 +81,12 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Ensure --http works independently of --wsl flag in index.js
-- [ ] T022 [US2] Add --debug flag for verbose logging in index.js
-- [ ] T023 [US2] Implement debug logging (mask sensitive header values) in src/lib/http-proxy.js
-- [ ] T024 [US2] Add multiple --header support verification in tests/http-proxy.test.js
-- [ ] T025 [US2] Create example config for local development in examples/claude-desktop-http.json
-- [ ] T026 [P] [US2] Create VS Code settings example in examples/vscode-settings-http.json
+- [X] T021 [US2] Ensure --http works independently of --wsl flag in index.js
+- [X] T022 [US2] Add --debug flag for verbose logging in index.js
+- [X] T023 [US2] Implement debug logging (mask sensitive header values) in src/lib/http-proxy.js
+- [X] T024 [US2] Add multiple --header support verification in tests/http-proxy.test.js
+- [X] T025 [US2] Create example config for local development in examples/claude-desktop-http.json
+- [X] T026 [P] [US2] Create VS Code settings example in examples/vscode-settings-http.json
 
 **Checkpoint**: User Story 2 complete - Local HTTP proxy works for debugging
 
@@ -102,10 +102,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Capture Mcp-Session-Id from response headers in src/lib/http-proxy.js
-- [ ] T028 [US4] Include session ID in subsequent request headers in src/lib/http-proxy.js
-- [ ] T029 [US4] Send DELETE request on session cleanup (graceful shutdown) in src/lib/http-proxy.js
-- [ ] T030 [US4] Unit test for session ID management in tests/http-proxy.test.js
+- [X] T027 [US4] Capture Mcp-Session-Id from response headers in src/lib/http-proxy.js
+- [X] T028 [US4] Include session ID in subsequent request headers in src/lib/http-proxy.js
+- [X] T029 [US4] Send DELETE request on session cleanup (graceful shutdown) in src/lib/http-proxy.js
+- [X] T030 [US4] Unit test for session ID management in tests/http-proxy.test.js
 
 **Checkpoint**: User Story 4 complete - Stateful MCP servers supported
 
@@ -115,11 +115,11 @@
 
 **Purpose**: Documentation, examples, and final validation
 
-- [ ] T031 [P] Update README.md with HTTP proxy usage examples
-- [ ] T032 [P] Update package.json version for beta release
-- [ ] T033 Verify all edge cases from spec.md (malformed JSON, network timeout, large payloads)
+- [X] T031 [P] Update README.md with HTTP proxy usage examples
+- [X] T032 [P] Update package.json version for beta release
+- [X] T033 Verify all edge cases from spec.md (malformed JSON, network timeout, large payloads)
 - [ ] T034 Run quickstart.md validation scenarios manually
-- [ ] T035 [P] Add JSDoc comments to exported functions in src/lib/http-proxy.js
+- [X] T035 [P] Add JSDoc comments to exported functions in src/lib/http-proxy.js
 - [ ] T036 Final integration test: GitHub MCP server with real token (manual E2E)
 
 ---

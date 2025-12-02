@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "github-mcp-via-wsl": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-cross@beta",
+        "--wsl",
+        "--http", "https://api.githubcopilot.com/mcp/",
+        "--header", "Authorization: Bearer $GH_TOKEN"
+      ],
+      "comment": "Access GitHub MCP server with token stored in WSL environment"
+    },
+    "custom-mcp-server": {
+      "type": "stdio", 
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-cross@beta",
+        "--http", "https://api.example.com/mcp/",
+        "--header", "Authorization: Bearer $API_TOKEN",
+        "--header", "X-Tenant-ID: $TENANT_ID",
+        "--timeout", "30000"
+      ],
+      "comment": "HTTP MCP server with multiple custom headers"
+    },
+    "local-debug": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-cross@beta",
+        "--debug",
+        "--http", "http://localhost:3000/mcp"
+      ],
+      "comment": "Local MCP server for debugging (HTTP allowed for localhost)"
+    }
+  }
+}
