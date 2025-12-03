@@ -141,7 +141,11 @@ class WSLBridge {
     // 2. Quoting hell (Perl handles its own strings)
     // 3. Zsh globbing issues (zsh won't try to expand regex inside Perl string)
     // 4. 'tr' newline handling differences
-    const pathFilter = "export PATH=$(perl -e 'print join(\":\", grep { !m{^/mnt/[a-z]/} } split(\":\", $ENV{PATH}))')";
+    //
+    // UPDATE (v1.0.16): Perl proved fragile due to shell escaping of $ENV.
+    // We switched to 'sed', which is robust, standard, and avoids complex quoting.
+    // The regex removes paths starting with /mnt/[a-z]/ (drive mounts) but keeps /mnt/wsl/.
+    const pathFilter = "export PATH=$(echo \"$PATH\" | sed -E 's|/mnt/[a-z]/[^:]*:?||g')";
     
     // Use login shell (-l) to load user profile naturally instead of manual sourcing
     // This is more robust across different shells (bash, zsh, etc.)

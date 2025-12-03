@@ -1,6 +1,6 @@
 {
   "name": "mcp-cross",
-  "version": "1.0.14",
+  "version": "1.0.16",
   "description": "Cross-platform MCP server bridge for seamless stdio communication across different environments",
   "author": "Sean Epping",
   "license": "MIT",
