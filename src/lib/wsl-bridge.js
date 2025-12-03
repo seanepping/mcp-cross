@@ -138,12 +138,12 @@ class WSLBridge {
     // CRITICAL: We wrap the command in 'env -S' to force PATH lookup at RUNTIME.
     // We use 'grep -v' instead of 'awk' to avoid potential globbing/quoting issues
     // with some shells (like zsh) that might misinterpret the awk regex.
-    // We also quote "$PATH" to handle spaces correctly.
-    const pathFilter = "export PATH=$(echo \"$PATH\" | tr ':' '\\n' | grep -v '^/mnt/[a-z]/' | paste -sd:)";
+    // We use 'printenv PATH' instead of 'echo "$PATH"' to avoid quoting issues if PATH contains quotes.
+    const pathFilter = "export PATH=$(printenv PATH | tr ':' '\\n' | grep -v '^/mnt/[a-z]/' | paste -sd:)";
     
     // Use login shell (-l) to load user profile naturally instead of manual sourcing
     // This is more robust across different shells (bash, zsh, etc.)
-    const debugPrefix = process.env.MCP_CROSS_DEBUG ? 'set -x; echo "DEBUG: PATH=$PATH" >&2; which npx >&2; ' : '';
+    const debugPrefix = process.env.MCP_CROSS_DEBUG ? 'set -x; echo "DEBUG: PATH=" >&2; printenv PATH >&2; which npx >&2; ' : '';
     const fullCommand = `${debugPrefix}${pathFilter}; env ${shellCommand}`;
     
     // Debug logging
