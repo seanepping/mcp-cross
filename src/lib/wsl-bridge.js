@@ -136,10 +136,12 @@ class WSLBridge {
     // Stderr is left alone so errors are still visible in logs.
     //
     // CRITICAL: We wrap the command in 'env -S' to force PATH lookup at RUNTIME.
-    // We use 'grep -v' instead of 'awk' to avoid potential globbing/quoting issues
-    // with some shells (like zsh) that might misinterpret the awk regex.
-    // We use 'printenv PATH' instead of 'echo "$PATH"' to avoid quoting issues if PATH contains quotes.
-    const pathFilter = "export PATH=$(printenv PATH | tr ':' '\\n' | grep -v '^/mnt/[a-z]/' | paste -sd:)";
+    // We use Perl to filter the PATH. This avoids:
+    // 1. Shell pipeline complexity (tr, grep, paste)
+    // 2. Quoting hell (Perl handles its own strings)
+    // 3. Zsh globbing issues (zsh won't try to expand regex inside Perl string)
+    // 4. 'tr' newline handling differences
+    const pathFilter = "export PATH=$(perl -e 'print join(\":\", grep { !m{^/mnt/[a-z]/} } split(\":\", $ENV{PATH}))')";
     
     // Use login shell (-l) to load user profile naturally instead of manual sourcing
     // This is more robust across different shells (bash, zsh, etc.)
