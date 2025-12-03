@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+const { version } = require('./package.json');
+console.error(`[mcp-cross] Version ${version} starting...`);
+
 const { spawn } = require('child_process');
 const { existsSync } = require('fs');
 const { resolve, isAbsolute, sep } = require('path');
@@ -224,6 +227,8 @@ async function main() {
     console.error('Options:');
     console.error('  --wsl                Bridge to WSL environment (Windows only)');
     console.error('  --distro <name>      Target specific WSL distribution');
+    console.error('  --shell <shell>      Shell to use in WSL (default: bash)');
+    console.error('  --diagnose           Run diagnostics to check WSL environment');
     console.error('  --http <url>         HTTP proxy mode: target HTTP MCP endpoint URL');
     console.error('  --header <header>    Add custom header (format: "Name: Value")');
     console.error('                       Can be specified multiple times');
@@ -260,6 +265,7 @@ async function main() {
   let httpUrl = null;
   let httpHeaders = [];
   let httpTimeout = 60000;
+  let targetShell = null;
 
   const delimiterIndex = args.indexOf('--');
 
@@ -290,6 +296,13 @@ async function main() {
     } else if (arg === '--distro' && i + 1 < optionArgs.length) {
       mcpCrossOptions.push(arg, optionArgs[i + 1]);
       i += 2;
+    } else if (arg === '--shell' && i + 1 < optionArgs.length) {
+      targetShell = optionArgs[i + 1];
+      mcpCrossOptions.push(arg, targetShell);
+      i += 2;
+    } else if (arg === '--diagnose') {
+      mcpCrossOptions.push(arg);
+      i++;
     } else if (arg.startsWith('--')) {
       mcpCrossOptions.push(arg);
       i++;
@@ -316,6 +329,27 @@ async function main() {
     process.env.MCP_CROSS_DEBUG = 'true';
   }
 
+  // Handle diagnostics mode
+  if (mcpCrossOptions.includes('--diagnose')) {
+    if (mcpCrossOptions.includes('--wsl')) {
+      try {
+        const options = {};
+        const distroIndex = mcpCrossOptions.indexOf('--distro');
+        if (distroIndex !== -1) options.distro = mcpCrossOptions[distroIndex + 1];
+        if (targetShell) options.shell = targetShell;
+        
+        await wslBridge.runDiagnostics(options);
+      } catch (err) {
+        console.error('Diagnostics Error:', err.message);
+        process.exit(1);
+      }
+      return;
+    } else {
+      console.error('Diagnostics mode currently only supports --wsl');
+      process.exit(1);
+    }
+  }
+
   // HTTP proxy mode
   if (httpUrl) {
     const httpArgs = {
@@ -330,7 +364,7 @@ async function main() {
       // Build the command to run mcp-cross in HTTP mode inside WSL
       const wslCommand = 'npx';
       const wslArgs = [
-        '-y', 'mcp-cross@beta',
+        '-y', 'mcp-cross@latest',
         '--http', httpUrl
       ];
       

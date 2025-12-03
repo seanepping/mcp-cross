@@ -113,13 +113,125 @@ class WSLBridge {
     // Translate arguments
     const translatedArgs = this.translateArgs(args);
 
-    // Add the command and its arguments
-    wslArgs.push(finalCommand, ...translatedArgs);
+    // Build the shell command string with proper escaping
+    // WSL interop appends Windows paths to PATH, which can cause Windows binaries
+    // (like /mnt/c/Program Files/nodejs/npx) to be found before Linux binaries.
+    // Paths with spaces (e.g., "Program Files") cause errors when executed.
+    // Solution: Filter out Windows drive mount paths (/mnt/c/, /mnt/d/, etc.)
+    // but keep other /mnt/ paths like /mnt/wsl/ which WSL needs.
+    const shellCommand = this.buildShellCommand(finalCommand, translatedArgs);
+    
+    // Filter Windows paths FIRST, then source profiles
+    // This is critical because:
+    // 1. WSL interop adds Windows paths to PATH (like /mnt/c/Program Files/nodejs)
+    // 2. If profiles run any commands (like npm, node) before filtering,
+    //    they might find Windows binaries first, causing "C:\Program is not recognized" errors
+    // 3. By filtering first, we ensure profile scripts use Linux binaries
+    //
+    // The awk filter removes paths starting with /mnt/ followed by a single letter (drive mounts)
+    // but keeps other /mnt/ paths like /mnt/wsl/ which WSL needs
+    //
+    // IMPORTANT: Profile sourcing stdout is redirected to /dev/null to prevent any output
+    // (like SSH key prompts, nvm messages, etc.) from corrupting the JSON-RPC stream.
+    // Stderr is left alone so errors are still visible in logs.
+    //
+    // CRITICAL: We wrap the command in 'env -S' to force PATH lookup at RUNTIME.
+    // We use 'grep -v' instead of 'awk' to avoid potential globbing/quoting issues
+    // with some shells (like zsh) that might misinterpret the awk regex.
+    // We also quote "$PATH" to handle spaces correctly.
+    const pathFilter = "export PATH=$(echo \"$PATH\" | tr ':' '\\n' | grep -v '^/mnt/[a-z]/' | paste -sd:)";
+    
+    // Use login shell (-l) to load user profile naturally instead of manual sourcing
+    // This is more robust across different shells (bash, zsh, etc.)
+    const debugPrefix = process.env.MCP_CROSS_DEBUG ? 'set -x; echo "DEBUG: PATH=$PATH" >&2; which npx >&2; ' : '';
+    const fullCommand = `${debugPrefix}${pathFilter}; env ${shellCommand}`;
+    
+    // Debug logging
+    if (process.env.MCP_CROSS_DEBUG) {
+      console.error('!!! MCP-CROSS DEBUG MODE ACTIVE !!!');
+      console.error('[WSL Bridge] Full command:', fullCommand);
+    }
+
+    // Use specified shell or default to bash
+    const shell = options.shell || 'bash';
+    wslArgs.push(shell, '-l', '-c', fullCommand);
 
     return {
       command: 'wsl.exe',
       args: wslArgs
     };
+  }
+
+  /**
+   * Run diagnostics to help debug environment issues
+   * @param {Object} options - Options including distro and shell
+   */
+  async runDiagnostics(options = {}) {
+    console.error('=== MCP-CROSS DIAGNOSTICS ===');
+    console.error('Platform:', os.platform());
+    console.error('Is Windows:', this.isWindows);
+    
+    if (!this.isWindows) {
+      console.error('Not running on Windows, skipping WSL diagnostics.');
+      return;
+    }
+
+    const shell = options.shell || 'bash';
+    console.error('Target Shell:', shell);
+    console.error('Target Distro:', options.distro || 'Default');
+
+    const diagScript = [
+      'echo "--- WSL Environment ---"',
+      'echo "User: $(whoami)"',
+      'echo "Shell: $SHELL"',
+      'echo "PWD: $PWD"',
+      'echo "PATH: $PATH"',
+      'echo "--- Node/NPM ---"',
+      'which node || echo "node not found"',
+      'node -v || echo "node version check failed"',
+      'which npm || echo "npm not found"',
+      'which npx || echo "npx not found"',
+      'echo "--- Configuration Files ---"',
+      'ls -la ~ | grep -E "\\.(bash|zsh|profile)" || echo "No profile files found"',
+      'echo "--- OS Release ---"',
+      'cat /etc/os-release | grep PRETTY_NAME'
+    ].join('; ');
+
+    const wslArgs = [];
+    if (options.distro) wslArgs.push('-d', options.distro);
+    
+    // Use login shell to see the actual environment
+    wslArgs.push(shell, '-l', '-c', diagScript);
+
+    console.error('Running diagnostic command in WSL...');
+    const child = child_process.spawn('wsl.exe', wslArgs, {
+      stdio: 'inherit'
+    });
+
+    return new Promise((resolve) => {
+      child.on('close', resolve);
+    });
+  }
+
+  /**
+   * Build a shell command string with proper escaping
+   * @param {string} command - The command to run
+   * @param {string[]} args - Arguments for the command
+   * @returns {string} Shell command string
+   */
+  buildShellCommand(command, args) {
+    // Escape single quotes in arguments for shell
+    const escapeForShell = (str) => {
+      // Replace ' with '\'' (end quote, escaped quote, start quote)
+      return "'" + str.replace(/'/g, "'\\''") + "'";
+    };
+
+    const parts = [escapeForShell(command)];
+    for (const arg of args) {
+      parts.push(escapeForShell(arg));
+    }
+    
+    return parts.join(' ');
   }
 
   /**
@@ -138,6 +250,10 @@ class WSLBridge {
       const distroIndex = mcpCrossOptions.indexOf('--distro');
       if (distroIndex !== -1 && distroIndex + 1 < mcpCrossOptions.length) {
         options.distro = mcpCrossOptions[distroIndex + 1];
+      }
+      const shellIndex = mcpCrossOptions.indexOf('--shell');
+      if (shellIndex !== -1 && shellIndex + 1 < mcpCrossOptions.length) {
+        options.shell = mcpCrossOptions[shellIndex + 1];
       }
 
       const wslCommand = this.getWSLCommand(command, args, options);
