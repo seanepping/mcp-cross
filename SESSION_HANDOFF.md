@@ -78,3 +78,16 @@ The GitHub server failed even when others worked.
 1. **Do not publish blindly**. Use `npm link` or local paths in the `claude_desktop_config.json` to test changes instantly.
 2. **Inspect the raw command**. Add logging in `wsl-bridge.js` to print the *exact* string being passed to `wsl.exe`.
 3. **Test the Runner Script approach**. Move the complexity out of the CLI args and into a dedicated shell script.
+
+## Update (2025-12-03)
+
+- Added `src/scripts/wsl-runner.sh`, invoked before every WSL command to strip `/mnt/<drive>` entries after the login shell runs. This avoids quote/glob issues and guarantees PATH filtering occurs after `.zshrc` / `.bashrc` execute.
+- `--wsl --http` now reuses the currently checked-out `index.js` via `node <entry> ...` instead of `npx mcp-cross@latest`, so debugging in this workspace reflects local changes immediately.
+- Introduced a `--env KEY=VALUE` flag so per-server configs can inject environment variables without touching the global Windows environment; these values are merged into the spawned process and forwarded through `WSLENV`.
+- `MCP_CROSS_DEBUG=1` logs the exact `wsl.exe` command/args plus runner output, making it easier to confirm PATH cleanup and env visibility.
+- Tests added: `tests/cli-env.test.js` ensures the CLI propagates `--env` variables; existing header/http proxy suites still pass.
+
+### Outstanding
+
+- Need real-world validation that env defined solely in WSL profiles (no Windows duplication) successfully drive GitHub MCP server authentication once GH_TOKEN is exported in `.zshrc`.
+- Consider mapping Claude `env` blocks into `--env` arguments automatically if further propagation issues arise.

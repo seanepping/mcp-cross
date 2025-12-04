@@ -113,44 +113,22 @@ class WSLBridge {
     // Translate arguments
     const translatedArgs = this.translateArgs(args);
 
-    // Build the shell command string with proper escaping
-    // WSL interop appends Windows paths to PATH, which can cause Windows binaries
-    // (like /mnt/c/Program Files/nodejs/npx) to be found before Linux binaries.
-    // Paths with spaces (e.g., "Program Files") cause errors when executed.
-    // Solution: Filter out Windows drive mount paths (/mnt/c/, /mnt/d/, etc.)
-    // but keep other /mnt/ paths like /mnt/wsl/ which WSL needs.
-    const shellCommand = this.buildShellCommand(finalCommand, translatedArgs);
+    // Build the shell command string with proper escaping is handled below
     
-    // Filter Windows paths FIRST, then source profiles
-    // This is critical because:
-    // 1. WSL interop adds Windows paths to PATH (like /mnt/c/Program Files/nodejs)
-    // 2. If profiles run any commands (like npm, node) before filtering,
-    //    they might find Windows binaries first, causing "C:\Program is not recognized" errors
-    // 3. By filtering first, we ensure profile scripts use Linux binaries
-    //
-    // The awk filter removes paths starting with /mnt/ followed by a single letter (drive mounts)
-    // but keeps other /mnt/ paths like /mnt/wsl/ which WSL needs
-    //
-    // IMPORTANT: Profile sourcing stdout is redirected to /dev/null to prevent any output
-    // (like SSH key prompts, nvm messages, etc.) from corrupting the JSON-RPC stream.
-    // Stderr is left alone so errors are still visible in logs.
-    //
-    // CRITICAL: We wrap the command in 'env -S' to force PATH lookup at RUNTIME.
-    // We use Perl to filter the PATH. This avoids:
-    // 1. Shell pipeline complexity (tr, grep, paste)
-    // 2. Quoting hell (Perl handles its own strings)
-    // 3. Zsh globbing issues (zsh won't try to expand regex inside Perl string)
-    // 4. 'tr' newline handling differences
-    //
-    // UPDATE (v1.0.16): Perl proved fragile due to shell escaping of $ENV.
-    // We switched to 'sed', which is robust, standard, and avoids complex quoting.
-    // The regex removes paths starting with /mnt/[a-z]/ (drive mounts) but keeps /mnt/wsl/.
-    const pathFilter = "export PATH=$(echo \"$PATH\" | sed -E 's|/mnt/[a-z]/[^:]*:?||g')";
-    
-    // Use login shell (-l) to load user profile naturally instead of manual sourcing
-    // This is more robust across different shells (bash, zsh, etc.)
+    // Use a helper runner script inside WSL to perform PATH sanitization.
+    // Putting the logic into a separate script avoids complex nested quoting
+    // when passing commands through `wsl.exe` -> login shell -> zsh/bash.
+    // The runner removes Windows drive mount entries (like /mnt/c/) from PATH
+    // and then execs the requested command so that the environment is clean.
+    const runnerWindowsPath = path.join(__dirname, '..', 'scripts', 'wsl-runner.sh');
+    const runnerWSLPath = this.translateWindowsPathToWSL(runnerWindowsPath);
+
+    // Build the command to invoke the runner using bash (avoids executable bit issues)
+    // We pass the target command and its args to the runner which will exec "$@" after
+    // sanitizing PATH.
     const debugPrefix = process.env.MCP_CROSS_DEBUG ? 'set -x; echo "DEBUG: PATH=" >&2; printenv PATH >&2; which npx >&2; ' : '';
-    const fullCommand = `${debugPrefix}${pathFilter}; env ${shellCommand}`;
+    const shellCommand = this.buildShellCommand(runnerWSLPath, [finalCommand, ...translatedArgs]);
+    const fullCommand = `${debugPrefix}${shellCommand}`;
     
     // Debug logging
     if (process.env.MCP_CROSS_DEBUG) {
@@ -246,9 +224,9 @@ class WSLBridge {
    * @param {string[]} args - Arguments to pass to the command
    * @param {string[]} mcpCrossOptions - Options passed to mcp-cross
    */
-  async execute(command, args, mcpCrossOptions = []) {
+  async execute(command, args, mcpCrossOptions = [], extraEnv = {}) {
     let spawnCommand, spawnArgs;
-    const envForSpawn = { ...process.env };
+    const envForSpawn = { ...process.env, ...extraEnv };
 
     if (this.isWindows) {
       // Parse options
@@ -303,6 +281,11 @@ class WSLBridge {
       spawnArgs = args;
     }
     
+    // Debug: show exact spawn command when debug mode is enabled
+    if (process.env.MCP_CROSS_DEBUG) {
+      console.error('[WSLBridge] Spawning:', spawnCommand, spawnArgs.join(' '));
+    }
+
     // Spawn the process
     const child = child_process.spawn(spawnCommand, spawnArgs, {
       stdio: ['pipe', 'pipe', 'inherit'],

@@ -76,6 +76,7 @@ npx mcp-cross [options] -- <server-command> [args...]
 - `--distro <name>` - Target specific WSL distribution
 - `--http <url>` - HTTP proxy mode: target HTTP MCP endpoint URL
 - `--header <header>` - Add custom header (format: "Name: Value", repeatable)
+- `--env KEY=VALUE` - Inject environment variable for the launched server/HTTP proxy (repeatable)
 - `--timeout <ms>` - HTTP request timeout (default: 60000)
 - `--debug` - Enable debug logging
 - `--` - Delimiter separating mcp-cross options from server command (recommended with npx)
@@ -357,6 +358,21 @@ mcp-cross --http https://api.example.com/mcp --timeout 30000
 
 # Debug mode
 mcp-cross --debug --http https://api.example.com/mcp
+```
+
+### Passing Environment Variables
+
+Use `--env KEY=VALUE` to inject variables without editing your Windows environment. These values are forwarded through WSL (via `WSLENV`) and are available to the HTTP proxy for header expansion.
+
+```bash
+# WSL server with Linux-specific paths defined inline
+mcp-cross --wsl --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory -- \
+  python3 -m ghostis.mcp
+
+# HTTP proxy that pulls a token from a secret manager
+GH_TOKEN=$(pass show gh/token)
+mcp-cross --http https://api.example.com/mcp --env GH_TOKEN=$GH_TOKEN \
+  --header "Authorization: Bearer $GH_TOKEN"
 ```
 
 ### HTTP Proxy Architecture

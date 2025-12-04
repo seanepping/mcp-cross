@@ -1,8 +1,16 @@
 node_modules/
 npm-debug.log
+.npm/
+.pnpm-debug.log*
+.yarn/
 .DS_Store
 *.log
 .vscode/
 .idea/
 .env
+.env.*
 dist/
+build/
+coverage/
+tmp/
+*.tgz

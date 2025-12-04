@@ -118,7 +118,7 @@
 - [X] T031 [P] Update README.md with HTTP proxy usage examples
 - [X] T032 [P] Update package.json version for beta release
 - [X] T033 Verify all edge cases from spec.md (malformed JSON, network timeout, large payloads)
-- [ ] T034 Run quickstart.md validation scenarios manually
+- [X] T034 Run quickstart.md validation scenarios manually (2025-12-04: exercised ghostis, filesystem, and GitHub configs via `node .` commands)
 - [X] T035 [P] Add JSDoc comments to exported functions in src/lib/http-proxy.js
 - [ ] T036 Final integration test: GitHub MCP server with real token (manual E2E)
 

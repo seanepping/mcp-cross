@@ -1,0 +1,14 @@
+# Exclude development and documentation files from npm package
+# (package.json "files" already whitelists the distributable content)
+
+.specify/
+.github/
+specs/
+tests/
+test.js
+MANUAL_TEST.md
+SESSION_HANDOFF.md
+AGENTS.md
+CONTRIBUTING.md
+*.sh
+*.tgz

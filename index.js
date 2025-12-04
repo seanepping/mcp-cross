@@ -136,7 +136,7 @@ class MCPBridge {
   /**
    * Launch the MCP server and bridge stdio
    */
-  async launch(serverCommand, serverArgs) {
+  async launch(serverCommand, serverArgs, customEnv = {}) {
     this.log('Environment:', {
       isWSL: this.isWSL,
       isWindows: this.isWindows,
@@ -156,9 +156,11 @@ class MCPBridge {
     // Default: direct execution (no shell)
     command = resolvedCommand;
     args = serverArgs;
+    const mergedEnv = { ...process.env, ...customEnv };
+
     spawnOptions = {
       stdio: ['pipe', 'pipe', 'inherit'], // stdin, stdout, stderr
-      env: { ...process.env },
+      env: mergedEnv,
       shell: false
     };
 
@@ -233,6 +235,7 @@ async function main() {
     console.error('  --header <header>    Add custom header (format: "Name: Value")');
     console.error('                       Can be specified multiple times');
     console.error('                       Environment variables ($VAR) are expanded');
+    console.error('  --env KEY=VALUE      Inject environment variable for the launched server (repeatable)');
     console.error('  --timeout <ms>       HTTP request timeout (default: 60000)');
     console.error('  --debug              Enable debug logging');
     console.error('  --                   Delimiter separating options from server command');
@@ -266,6 +269,7 @@ async function main() {
   let httpHeaders = [];
   let httpTimeout = 60000;
   let targetShell = null;
+  const customEnv = {};
 
   const delimiterIndex = args.indexOf('--');
 
@@ -284,6 +288,21 @@ async function main() {
     } else if (arg === '--header' && i + 1 < optionArgs.length) {
       httpHeaders.push(optionArgs[i + 1]);
       mcpCrossOptions.push(arg, optionArgs[i + 1]);
+      i += 2;
+    } else if (arg === '--env' && i + 1 < optionArgs.length) {
+      const envSpec = optionArgs[i + 1];
+      const equalsIndex = envSpec.indexOf('=');
+      if (equalsIndex <= 0) {
+        console.error('Error: --env requires KEY=VALUE format');
+        process.exit(1);
+      }
+      const key = envSpec.slice(0, equalsIndex).trim();
+      const value = envSpec.slice(equalsIndex + 1);
+      if (!key) {
+        console.error('Error: --env requires a non-empty variable name');
+        process.exit(1);
+      }
+      customEnv[key] = value;
       i += 2;
     } else if (arg === '--timeout' && i + 1 < optionArgs.length) {
       httpTimeout = parseInt(optionArgs[i + 1], 10);
@@ -361,12 +380,10 @@ async function main() {
 
     // If --wsl is specified, we need to run the HTTP proxy in WSL
     if (mcpCrossOptions.includes('--wsl')) {
-      // Build the command to run mcp-cross in HTTP mode inside WSL
-      const wslCommand = 'npx';
-      const wslArgs = [
-        '-y', 'mcp-cross@latest',
-        '--http', httpUrl
-      ];
+      // Build the command to run this same entry point in HTTP mode inside WSL
+      const entryPoint = resolve(process.argv[1]);
+      const wslCommand = 'node';
+      const wslArgs = [entryPoint, '--http', httpUrl];
       
       // Add headers
       for (const header of httpHeaders) {
@@ -382,7 +399,7 @@ async function main() {
       }
 
       try {
-        await wslBridge.execute(wslCommand, wslArgs, mcpCrossOptions);
+        await wslBridge.execute(wslCommand, wslArgs, mcpCrossOptions, customEnv);
       } catch (err) {
         console.error('WSL HTTP Proxy Error:', err.message);
         process.exit(1);
@@ -392,7 +409,10 @@ async function main() {
 
     // Run HTTP proxy directly
     try {
-      await startHttpProxy(httpArgs, process.env);
+      const envForHttp = Object.keys(customEnv).length > 0
+        ? { ...process.env, ...customEnv }
+        : process.env;
+      await startHttpProxy(httpArgs, envForHttp);
     } catch (err) {
       console.error('HTTP Proxy Error:', err.message);
       process.exit(1);
@@ -410,7 +430,7 @@ async function main() {
   // Check for WSL bridge mode (process bridge)
   if (mcpCrossOptions.includes('--wsl')) {
     try {
-      await wslBridge.execute(serverCommand, serverArgs, mcpCrossOptions);
+      await wslBridge.execute(serverCommand, serverArgs, mcpCrossOptions, customEnv);
     } catch (err) {
       console.error('WSL Bridge Error:', err.message);
       process.exit(1);
@@ -419,7 +439,7 @@ async function main() {
   }
 
   const bridge = new MCPBridge();
-  await bridge.launch(serverCommand, serverArgs);
+  await bridge.launch(serverCommand, serverArgs, customEnv);
 }
 
 // Run if executed directly
