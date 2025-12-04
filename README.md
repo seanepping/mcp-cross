@@ -400,6 +400,106 @@ GitHub MCP Server (api.githubcopilot.com)
 - **Graceful shutdown**: Clean session cleanup on SIGINT/SIGTERM
 - **Security**: Warns for non-localhost HTTP (recommends HTTPS)
 
+### Claude Desktop Server Recipes
+
+Use these tested command lines when mirroring Claude Desktop’s configuration. Each snippet lists every flag that must be present for the server to launch successfully under Windows → WSL bridging.
+
+#### 1. Ghostis Brain (Python + WSL)
+
+Requirements:
+
+- `--wsl --shell zsh` so the command executes inside your default WSL distro using the same shell Claude uses.
+- `--` delimiter before the actual server command (`python3 -m ghostis.mcp`).
+- Environment variables `GHOSTIS_STORAGE_DIR` and `GHOSTIS_LOG_LEVEL`. Either export them in WSL or provide them via repeated `--env KEY=VALUE` flags.
+
+```bash
+# Run locally (same as Claude) using the repo checkout
+node . --wsl --shell zsh \
+  --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory \
+  --env GHOSTIS_LOG_LEVEL=info \
+  -- python3 -m ghostis.mcp
+```
+
+Claude config fragment:
+
+```json
+"ghostis-brain": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--wsl", "--shell", "zsh",
+    "--", "python3", "-m", "ghostis.mcp"
+  ],
+  "env": {
+    "GHOSTIS_STORAGE_DIR": "/home/epps/.ghostis/memory",
+    "GHOSTIS_LOG_LEVEL": "info"
+  }
+}
+```
+
+#### 2. Filesystem Server (Node + npx)
+
+Requirements:
+
+- `npx` must exist inside WSL. Install Node/npm there (`sudo apt install nodejs npm`) if you only have Node on Windows.
+- Source path is a Windows directory (e.g., `C:\Users\seane\dev`). `mcp-cross` converts it to `/mnt/c/...` for you.
+- Target path is the WSL mount point you want the MCP server to expose (e.g., `/mnt/dev/workspaces`).
+
+```bash
+node . --wsl --shell zsh -- \
+  npx -y @modelcontextprotocol/server-filesystem \
+  "C:\\Users\\seane\\dev" \
+  "/mnt/dev/workspaces"
+```
+
+Claude config fragment:
+
+```json
+"filesystem": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--wsl", "--shell", "zsh",
+    "--",
+    "npx", "-y", "@modelcontextprotocol/server-filesystem",
+    "C:\\Users\\seane\\dev",
+    "/mnt/dev/workspaces"
+  ]
+}
+```
+
+#### 3. GitHub MCP Server (HTTP Proxy)
+
+Requirements:
+
+- `--http https://api.githubcopilot.com/mcp/` with `--wsl` so the proxy runs in Linux where `$GH_TOKEN` lives.
+- Pass the header **in single quotes** (`'Authorization: Bearer $GH_TOKEN'`) so PowerShell does not expand `$GH_TOKEN` before `mcp-cross` can substitute it inside WSL.
+- Ensure `GH_TOKEN` exists in the WSL environment, or pass it via `--env GH_TOKEN=...`.
+
+```bash
+node . --wsl --shell zsh --debug \
+  --env GH_TOKEN="$GH_TOKEN" \
+  --http https://api.githubcopilot.com/mcp/ \
+  --header 'Authorization: Bearer $GH_TOKEN'
+```
+
+Claude config fragment:
+
+```json
+"github-mcp-server": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--debug",
+    "--wsl", "--shell", "zsh",
+    "--http", "https://api.githubcopilot.com/mcp/",
+    "--header", "Authorization: Bearer $GH_TOKEN"
+  ]
+}
+```
+
+> **Tip:** When testing from Windows PowerShell, keep the `$GH_TOKEN` literal inside single quotes and pass the actual value with `--env GH_TOKEN=$env:GH_TOKEN` so the proxy can expand it inside WSL exactly like Claude does.
+
 ### Bridge Usage
 
 Use the `--wsl` flag to indicate the target server is in WSL.
