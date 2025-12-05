@@ -1,0 +1,21 @@
+{
+  "current_focus": "Interactive local MCP server validation",
+  "focus_history": [
+    {
+      "focus": "Implement local node entry for Claude commands",
+      "timestamp": "2025-12-03T23:07:33.379Z"
+    },
+    {
+      "focus": "Interactive local MCP server validation",
+      "timestamp": "2025-12-04T00:17:36.556Z"
+    }
+  ],
+  "memories": [
+    {
+      "id": "60f5c5d1-f0b4-4291-9bbc-e4c7f0457675",
+      "content": "Validated manual CLI interactions for ghostis, filesystem, and GitHub HTTP proxy",
+      "context": {},
+      "timestamp": "2025-12-04T12:31:38.554Z"
+    }
+  ]
+}

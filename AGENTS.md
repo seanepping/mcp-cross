@@ -49,48 +49,9 @@ The main logic resides in `index.js`, which defines the `MCPBridge` class.
 
 This project utilizes `ghostis-brain` for persistent memory and context management. Agents should use the following tools and patterns:
 
-### Core Tools
-
-* **`get_current_context()`**: Call this at the start of every session to understand the current state, active focus, and recent memories.
-* **`recall_memory(query)`**: Search for past decisions, errors, and context.
-  * **Syntax**: Supports field-specific searches (`type:decision`, `tag:wsl`), boolean operators (`AND`, `OR`, `NOT`), and natural language.
-  * **Example**: `recall_memory("type:error tag:wsl path translation")`
-* **`remember_this(content, context)`**: Store important information.
-  * **Content**: Clear, searchable description of the item.
-  * **Context**: Metadata object with `type`, `tags`, `priority`, etc.
-  * **Example**:
-
-    ```javascript
-    remember_this({
-      content: "Fixed path translation issue for drive letters in WSL",
-      context: { type: "fix", tags: ["wsl", "path-translation"], priority: "high" }
-    })
-    ```
-
-* **`set_focus(focus)`**: Update the current session focus when switching tasks.
-* **`get_focus_history()`**: Review past focus changes to understand the session trajectory.
-
-### Best Practices
-
-1. **Session Init**: Always run `get_current_context()` first. `set_focus` after initialization.
-2. **Search First**: Before asking or implementing, search memory for similar issues or decisions.
-3. **Document Decisions**: Store architectural decisions, complex fixes and milestone information using `remember_this`.
-4. **Update Focus**: Keep the session focus current to aid context retrieval.
-
-### Session Wrap-Up Workflow
-
-To keep work synced across environments (Linux, WSL, Windows, remote runners, etc.), every session should end with the following checklist:
-
-1. **Set a Wrap-Up Focus**: Call `set_focus("Session wrap-up: <short summary>")` before closing out your work. This creates a focus-history breadcrumb for downstream agents.
-2. **Capture the Summary**: Draft a concise recap covering (a) objective, (b) key changes, (c) verification/tests, and (d) outstanding follow-ups or blockers.
-3. **Persist with `remember_this`**: Store the summary plus metadata (e.g., `{ type: "session_summary", project: "mcp-cross", tags: ["beta","release-prep"], date: "YYYY-MM-DD" }`). This ensures future agents—regardless of OS—can retrieve the latest state via `recall_memory`.
-4. **Reference Memory IDs**: When possible, note the returned `memory_id` in your user reply so humans or other agents can jump straight to the handoff record.
-
-Following this routine guarantees that session continuity survives tool restarts, multi-platform hops, and relay-style handoffs.
-
 ## Development Workflow
 
-We follow the **Ghostis Workflow** to ensure quality and continuity:
+We follow this workflow to ensure quality and continuity:
 
 1. **BDD-First**: Define behavior with tests/specs before implementation where possible.
 2. **Value-Slice Planning**: Break work into small, working increments rather than large batches.

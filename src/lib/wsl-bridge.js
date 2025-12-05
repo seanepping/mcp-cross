@@ -113,8 +113,32 @@ class WSLBridge {
     // Translate arguments
     const translatedArgs = this.translateArgs(args);
 
-    // Add the command and its arguments
-    wslArgs.push(finalCommand, ...translatedArgs);
+    // Build the shell command string with proper escaping is handled below
+    
+    // Use a helper runner script inside WSL to perform PATH sanitization.
+    // Putting the logic into a separate script avoids complex nested quoting
+    // when passing commands through `wsl.exe` -> login shell -> zsh/bash.
+    // The runner removes Windows drive mount entries (like /mnt/c/) from PATH
+    // and then execs the requested command so that the environment is clean.
+    const runnerWindowsPath = path.join(__dirname, '..', 'scripts', 'wsl-runner.sh');
+    const runnerWSLPath = this.translateWindowsPathToWSL(runnerWindowsPath);
+
+    // Build the command to invoke the runner using bash (avoids executable bit issues)
+    // We pass the target command and its args to the runner which will exec "$@" after
+    // sanitizing PATH.
+    const debugPrefix = process.env.MCP_CROSS_DEBUG ? 'set -x; echo "DEBUG: PATH=" >&2; printenv PATH >&2; which npx >&2; ' : '';
+    const shellCommand = this.buildShellCommand(runnerWSLPath, [finalCommand, ...translatedArgs]);
+    const fullCommand = `${debugPrefix}${shellCommand}`;
+    
+    // Debug logging
+    if (process.env.MCP_CROSS_DEBUG) {
+      console.error('!!! MCP-CROSS DEBUG MODE ACTIVE !!!');
+      console.error('[WSL Bridge] Full command:', fullCommand);
+    }
+
+    // Use specified shell or default to bash
+    const shell = options.shell || 'bash';
+    wslArgs.push(shell, '-l', '-c', fullCommand);
 
     return {
       command: 'wsl.exe',
@@ -123,14 +147,86 @@ class WSLBridge {
   }
 
   /**
+   * Run diagnostics to help debug environment issues
+   * @param {Object} options - Options including distro and shell
+   */
+  async runDiagnostics(options = {}) {
+    console.error('=== MCP-CROSS DIAGNOSTICS ===');
+    console.error('Platform:', os.platform());
+    console.error('Is Windows:', this.isWindows);
+    
+    if (!this.isWindows) {
+      console.error('Not running on Windows, skipping WSL diagnostics.');
+      return;
+    }
+
+    const shell = options.shell || 'bash';
+    console.error('Target Shell:', shell);
+    console.error('Target Distro:', options.distro || 'Default');
+
+    const diagScript = [
+      'echo "--- WSL Environment ---"',
+      'echo "User: $(whoami)"',
+      'echo "Shell: $SHELL"',
+      'echo "PWD: $PWD"',
+      'echo "PATH: $PATH"',
+      'echo "--- Node/NPM ---"',
+      'which node || echo "node not found"',
+      'node -v || echo "node version check failed"',
+      'which npm || echo "npm not found"',
+      'which npx || echo "npx not found"',
+      'echo "--- Configuration Files ---"',
+      'ls -la ~ | grep -E "\\.(bash|zsh|profile)" || echo "No profile files found"',
+      'echo "--- OS Release ---"',
+      'cat /etc/os-release | grep PRETTY_NAME'
+    ].join('; ');
+
+    const wslArgs = [];
+    if (options.distro) wslArgs.push('-d', options.distro);
+    
+    // Use login shell to see the actual environment
+    wslArgs.push(shell, '-l', '-c', diagScript);
+
+    console.error('Running diagnostic command in WSL...');
+    const child = child_process.spawn('wsl.exe', wslArgs, {
+      stdio: 'inherit'
+    });
+
+    return new Promise((resolve) => {
+      child.on('close', resolve);
+    });
+  }
+
+  /**
+   * Build a shell command string with proper escaping
+   * @param {string} command - The command to run
+   * @param {string[]} args - Arguments for the command
+   * @returns {string} Shell command string
+   */
+  buildShellCommand(command, args) {
+    // Escape single quotes in arguments for shell
+    const escapeForShell = (str) => {
+      // Replace ' with '\'' (end quote, escaped quote, start quote)
+      return "'" + str.replace(/'/g, "'\\''") + "'";
+    };
+
+    const parts = [escapeForShell(command)];
+    for (const arg of args) {
+      parts.push(escapeForShell(arg));
+    }
+    
+    return parts.join(' ');
+  }
+
+  /**
    * Execute a command in WSL
    * @param {string} command - Command to execute
    * @param {string[]} args - Arguments to pass to the command
    * @param {string[]} mcpCrossOptions - Options passed to mcp-cross
    */
-  async execute(command, args, mcpCrossOptions = []) {
+  async execute(command, args, mcpCrossOptions = [], extraEnv = {}) {
     let spawnCommand, spawnArgs;
-    const envForSpawn = { ...process.env };
+    const envForSpawn = { ...process.env, ...extraEnv };
 
     if (this.isWindows) {
       // Parse options
@@ -138,6 +234,10 @@ class WSLBridge {
       const distroIndex = mcpCrossOptions.indexOf('--distro');
       if (distroIndex !== -1 && distroIndex + 1 < mcpCrossOptions.length) {
         options.distro = mcpCrossOptions[distroIndex + 1];
+      }
+      const shellIndex = mcpCrossOptions.indexOf('--shell');
+      if (shellIndex !== -1 && shellIndex + 1 < mcpCrossOptions.length) {
+        options.shell = mcpCrossOptions[shellIndex + 1];
       }
 
       const wslCommand = this.getWSLCommand(command, args, options);
@@ -181,6 +281,11 @@ class WSLBridge {
       spawnArgs = args;
     }
     
+    // Debug: show exact spawn command when debug mode is enabled
+    if (process.env.MCP_CROSS_DEBUG) {
+      console.error('[WSLBridge] Spawning:', spawnCommand, spawnArgs.join(' '));
+    }
+
     // Spawn the process
     const child = child_process.spawn(spawnCommand, spawnArgs, {
       stdio: ['pipe', 'pipe', 'inherit'],

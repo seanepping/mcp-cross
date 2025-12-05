@@ -1,6 +1,6 @@
 # mcp-cross
 
-Cross-platform MCP server bridge for seamless stdio communication across different environments, mainly for accessing linux mcp servers from windows in WSL2.
+Zero depedency ccross-platform MCP server bridge for seamless stdio communication across different environments, mainly for accessing linux mcp servers from windows in WSL2.
 
 ## Overview
 
@@ -8,13 +8,11 @@ Cross-platform MCP server bridge for seamless stdio communication across differe
 
 ## Release status
 
-> ⚠️ `mcp-cross` is currently shipped as a **pre-release (beta)** while we finish hardening Windows↔WSL workflows.
+### 1.1.0
 
-- Install globally with the beta dist-tag: `npm install -g mcp-cross@beta`
-- Run ad-hoc from npm: `npx mcp-cross@beta -- node server.js`
-- Pin a specific beta (e.g., `npm install -g mcp-cross@1.0.0-beta.0`) for deterministic test environments.
-
-Expect rapid iteration: features and flags may change between beta drops until we promote a stable `latest` release.
+- Install globally with the latest dist-tag: `npx mcp-cross@latest`
+- Run ad-hoc from npm: `npx mcp-cross@latest -- node server.js`
+- Pin a specific version (e.g., `npm install -g mcp-cross@1.0.0-beta.0`) for deterministic test environments.
 
 ### Key Features
 
@@ -22,6 +20,7 @@ Expect rapid iteration: features and flags may change between beta drops until w
 - **Stdio bridging**: Seamlessly pipes stdin/stdout between the host and MCP server
 - **Environment forwarding**: Passes environment variables and arguments to the MCP server
 - **WSL support**: Handles running Windows executables from WSL environments
+- **HTTP proxy mode**: Bridge stdio to HTTP-based MCP servers with environment variable expansion
 - **Universal compatibility**: Works with Claude Code CLI, VSCode extensions, and desktop apps
 
 ## Installation
@@ -71,6 +70,12 @@ npx mcp-cross [options] -- <server-command> [args...]
 
 ### Options
 
+- `--wsl` - Bridge to WSL environment (Windows only)
+- `--distro <name>` - Target specific WSL distribution
+- `--http <url>` - HTTP proxy mode: target HTTP MCP endpoint URL
+- `--header <header>` - Add custom header (format: "Name: Value", repeatable)
+- `--env KEY=VALUE` - Inject environment variable for the launched server/HTTP proxy (repeatable)
+- `--timeout <ms>` - HTTP request timeout (default: 60000)
 - `--debug` - Enable debug logging
 - `--` - Delimiter separating mcp-cross options from server command (recommended with npx)
 
@@ -284,6 +289,214 @@ In VSCode settings or `.vscode/settings.json`:
 ## Windows to WSL Bridge
 
 `mcp-cross` supports launching MCP servers located in WSL directly from Windows. This is useful when your development environment and tools are in WSL, but you are using a Windows-based client (like Claude Desktop or VS Code on Windows).
+
+## HTTP Proxy Mode
+
+`mcp-cross` can act as a stdio-to-HTTP proxy, allowing you to access HTTP-based MCP servers (like GitHub's MCP) through a stdio interface. This is particularly useful when authentication tokens are stored in WSL but the MCP client runs on Windows.
+
+### The Problem
+
+When you have an HTTP MCP server that requires authentication:
+
+```json
+{
+  "github-mcp-server": {
+    "type": "http",
+    "url": "https://api.githubcopilot.com/mcp/",
+    "headers": {
+      "Authorization": "Bearer $GH_TOKEN"
+    }
+  }
+}
+```
+
+If `$GH_TOKEN` is stored in WSL (e.g., in `~/.bashrc`), the Windows MCP client can't access it.
+
+### The Solution
+
+Use `mcp-cross` with `--wsl --http` to proxy through WSL:
+
+```json
+{
+  "github-mcp-server": {
+    "type": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "mcp-cross@beta",
+      "--wsl",
+      "--http", "https://api.githubcopilot.com/mcp/",
+      "--header", "Authorization: Bearer $GH_TOKEN"
+    ]
+  }
+}
+```
+
+The proxy runs in WSL where `$GH_TOKEN` is accessible, expands the environment variable, and forwards requests to the HTTP endpoint.
+
+### HTTP Proxy Examples
+
+```bash
+# Basic HTTP proxy
+mcp-cross --http https://api.example.com/mcp
+
+# With authentication header (environment variable expanded)
+mcp-cross --http https://api.example.com/mcp --header "Authorization: Bearer $TOKEN"
+
+# Via WSL for secret access (primary use case)
+mcp-cross --wsl --http https://api.githubcopilot.com/mcp/ --header "Authorization: Bearer $GH_TOKEN"
+
+# Multiple headers
+mcp-cross --http https://api.example.com/mcp \
+  --header "Authorization: Bearer $TOKEN" \
+  --header "X-Tenant-ID: $TENANT_ID"
+
+# Custom timeout
+mcp-cross --http https://api.example.com/mcp --timeout 30000
+
+# Debug mode
+mcp-cross --debug --http https://api.example.com/mcp
+```
+
+### Passing Environment Variables
+
+Use `--env KEY=VALUE` to inject variables without editing your Windows environment. These values are forwarded through WSL (via `WSLENV`) and are available to the HTTP proxy for header expansion.
+
+```bash
+# WSL server with Linux-specific paths defined inline
+mcp-cross --wsl --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory -- \
+  python3 -m ghostis.mcp
+
+# HTTP proxy that pulls a token from a secret manager
+GH_TOKEN=$(pass show gh/token)
+mcp-cross --http https://api.example.com/mcp --env GH_TOKEN=$GH_TOKEN \
+  --header "Authorization: Bearer $GH_TOKEN"
+```
+
+### HTTP Proxy Architecture
+
+```text
+Claude Desktop (Windows)
+        │
+        │ stdio (JSON-RPC)
+        ▼
+   mcp-cross --wsl --http
+   (runs in WSL via wsl.exe)
+        │
+        │ reads $GH_TOKEN from WSL env
+        │
+        │ HTTP POST (JSON-RPC)
+        ▼
+GitHub MCP Server (api.githubcopilot.com)
+```
+
+### HTTP Proxy Features
+
+- **Environment variable expansion**: `$VAR` and `${VAR}` syntax in header values
+- **Session management**: Automatically handles `Mcp-Session-Id` headers
+- **Error handling**: HTTP errors converted to JSON-RPC error responses
+- **Graceful shutdown**: Clean session cleanup on SIGINT/SIGTERM
+- **Security**: Warns for non-localhost HTTP (recommends HTTPS)
+
+### Claude Desktop Server Recipes
+
+Use these tested command lines when mirroring Claude Desktop’s configuration. Each snippet lists every flag that must be present for the server to launch successfully under Windows → WSL bridging.
+
+#### 1. Ghostis Brain (Python + WSL)
+
+Requirements:
+
+- `--wsl --shell zsh` so the command executes inside your default WSL distro using the same shell Claude uses.
+- `--` delimiter before the actual server command (`python3 -m ghostis.mcp`).
+- Environment variables `GHOSTIS_STORAGE_DIR` and `GHOSTIS_LOG_LEVEL`. Either export them in WSL or provide them via repeated `--env KEY=VALUE` flags.
+
+```bash
+# Run locally (same as Claude) using the repo checkout
+node . --wsl --shell zsh \
+  --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory \
+  --env GHOSTIS_LOG_LEVEL=info \
+  -- python3 -m ghostis.mcp
+```
+
+Claude config fragment:
+
+```json
+"ghostis-brain": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--wsl", "--shell", "zsh",
+    "--", "python3", "-m", "ghostis.mcp"
+  ],
+  "env": {
+    "GHOSTIS_STORAGE_DIR": "/home/epps/.ghostis/memory",
+    "GHOSTIS_LOG_LEVEL": "info"
+  }
+}
+```
+
+#### 2. Filesystem Server (Node + npx)
+
+Requirements:
+
+- `npx` must exist inside WSL. Install Node/npm there (`sudo apt install nodejs npm`) if you only have Node on Windows.
+- Source path is a Windows directory (e.g., `C:\Users\seane\dev`). `mcp-cross` converts it to `/mnt/c/...` for you.
+- Target path is the WSL mount point you want the MCP server to expose (e.g., `/mnt/dev/workspaces`).
+
+```bash
+node . --wsl --shell zsh -- \
+  npx -y @modelcontextprotocol/server-filesystem \
+  "C:\\Users\\seane\\dev" \
+  "/mnt/dev/workspaces"
+```
+
+Claude config fragment:
+
+```json
+"filesystem": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--wsl", "--shell", "zsh",
+    "--",
+    "npx", "-y", "@modelcontextprotocol/server-filesystem",
+    "C:\\Users\\seane\\dev",
+    "/mnt/dev/workspaces"
+  ]
+}
+```
+
+#### 3. GitHub MCP Server (HTTP Proxy)
+
+Requirements:
+
+- `--http https://api.githubcopilot.com/mcp/` with `--wsl` so the proxy runs in Linux where `$GH_TOKEN` lives.
+- Pass the header **in single quotes** (`'Authorization: Bearer $GH_TOKEN'`) so PowerShell does not expand `$GH_TOKEN` before `mcp-cross` can substitute it inside WSL.
+- Ensure `GH_TOKEN` exists in the WSL environment, or pass it via `--env GH_TOKEN=...`.
+
+```bash
+node . --wsl --shell zsh --debug \
+  --env GH_TOKEN="$GH_TOKEN" \
+  --http https://api.githubcopilot.com/mcp/ \
+  --header 'Authorization: Bearer $GH_TOKEN'
+```
+
+Claude config fragment:
+
+```json
+"github-mcp-server": {
+  "command": "npx",
+  "args": [
+    "-y", "mcp-cross@latest",
+    "--debug",
+    "--wsl", "--shell", "zsh",
+    "--http", "https://api.githubcopilot.com/mcp/",
+    "--header", "Authorization: Bearer $GH_TOKEN"
+  ]
+}
+```
+
+> **Tip:** When testing from Windows PowerShell, keep the `$GH_TOKEN` literal inside single quotes and pass the actual value with `--env GH_TOKEN=$env:GH_TOKEN` so the proxy can expand it inside WSL exactly like Claude does.
 
 ### Bridge Usage
 
@@ -518,6 +731,6 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 MIT
 
-## Credits
+## Next Steps
 
-Built for seamless MCP server integration across different AI coding environments, with special focus on WSL/Windows interoperability.
+- Ability to run in docker isolation and invoke a deterministic agent workload over stdio

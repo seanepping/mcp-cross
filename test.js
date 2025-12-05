@@ -29,17 +29,34 @@ function testWSLBridge() {
   // Test 2: Command Construction
   console.log('  Testing getWSLCommand:');
   
+  // Commands are now wrapped in bash -l -c with PATH filtering to remove Windows interop paths
   const cmd1 = wslBridge.getWSLCommand('node', ['server.js'], {});
-  const status1 = cmd1.command === 'wsl.exe' && cmd1.args.join(' ') === 'node server.js' ? '✓' : '✗';
+  const status1 = cmd1.command === 'wsl.exe' && 
+                  cmd1.args[0] === 'bash' && 
+                  cmd1.args[1] === '-l' &&
+                  cmd1.args[2] === '-c' &&
+                  cmd1.args[3].includes("'node' 'server.js'") &&
+                  cmd1.args[3].includes('grep') ? '✓' : '✗';
   console.log(`    ${status1} Basic command: ${JSON.stringify(cmd1)}`);
 
   const cmd2 = wslBridge.getWSLCommand('node', ['server.js'], { distro: 'Ubuntu' });
-  const status2 = cmd2.command === 'wsl.exe' && cmd2.args.join(' ') === '-d Ubuntu node server.js' ? '✓' : '✗';
+  const status2 = cmd2.command === 'wsl.exe' && 
+                  cmd2.args[0] === '-d' && 
+                  cmd2.args[1] === 'Ubuntu' &&
+                  cmd2.args[2] === 'bash' &&
+                  cmd2.args[5].includes("'node' 'server.js'") ? '✓' : '✗';
   console.log(`    ${status2} With distro: ${JSON.stringify(cmd2)}`);
 
   const cmd3 = wslBridge.getWSLCommand('C:\\Tools\\tool.exe', [], {});
-  const status3 = cmd3.command === 'wsl.exe' && cmd3.args[0] === '/mnt/c/Tools/tool.exe' ? '✓' : '✗';
+  const status3 = cmd3.command === 'wsl.exe' && 
+                  cmd3.args[3].includes("'/mnt/c/Tools/tool.exe'") ? '✓' : '✗';
   console.log(`    ${status3} Command translation: ${JSON.stringify(cmd3)}`);
+
+  const cmd4 = wslBridge.getWSLCommand('node', [], { shell: 'zsh' });
+  const status4 = cmd4.command === 'wsl.exe' && 
+                  cmd4.args[0] === 'zsh' && 
+                  cmd4.args[1] === '-l' ? '✓' : '✗';
+  console.log(`    ${status4} Custom shell (zsh): ${JSON.stringify(cmd4)}`);
 
   // Test 3: Tilde Expansion (Mocking os.homedir if not on Windows)
   if (require('os').platform() !== 'win32') {

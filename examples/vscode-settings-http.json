@@ -1,0 +1,27 @@
+{
+  "mcp": {
+    "servers": {
+      "github-mcp-via-wsl": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-cross@latest",
+          "--wsl",
+          "--http", "https://api.githubcopilot.com/mcp/",
+          "--header", "Authorization: Bearer $GH_TOKEN"
+        ]
+      },
+      "custom-api": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "mcp-cross@latest",
+          "--http", "https://api.example.com/mcp/",
+          "--header", "Authorization: Bearer $API_TOKEN"
+        ]
+      }
+    }
+  }
+}
