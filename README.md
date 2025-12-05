@@ -364,7 +364,7 @@ Use `--env KEY=VALUE` to inject variables without editing your Windows environme
 
 ```bash
 # WSL server with Linux-specific paths defined inline
-mcp-cross --wsl --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory -- \
+mcp-cross --wsl --env GHOSTIS_STORAGE_DIR=/home/username/.ghostis/memory -- \
   python3 -m ghostis.mcp
 
 # HTTP proxy that pulls a token from a secret manager
@@ -413,7 +413,7 @@ Requirements:
 ```bash
 # Run locally (same as Claude) using the repo checkout
 node . --wsl --shell zsh \
-  --env GHOSTIS_STORAGE_DIR=/home/epps/.ghostis/memory \
+  --env GHOSTIS_STORAGE_DIR=/home/username/.ghostis/memory \
   --env GHOSTIS_LOG_LEVEL=info \
   -- python3 -m ghostis.mcp
 ```
@@ -429,7 +429,7 @@ Claude config fragment:
     "--", "python3", "-m", "ghostis.mcp"
   ],
   "env": {
-    "GHOSTIS_STORAGE_DIR": "/home/epps/.ghostis/memory",
+    "GHOSTIS_STORAGE_DIR": "/home/username/.ghostis/memory",
     "GHOSTIS_LOG_LEVEL": "info"
   }
 }
@@ -440,13 +440,13 @@ Claude config fragment:
 Requirements:
 
 - `npx` must exist inside WSL. Install Node/npm there (`sudo apt install nodejs npm`) if you only have Node on Windows.
-- Source path is a Windows directory (e.g., `C:\Users\seane\dev`). `mcp-cross` converts it to `/mnt/c/...` for you.
+- Source path is a Windows directory (e.g., `C:\Users\username\dev`). `mcp-cross` converts it to `/mnt/c/...` for you.
 - Target path is the WSL mount point you want the MCP server to expose (e.g., `/mnt/dev/workspaces`).
 
 ```bash
 node . --wsl --shell zsh -- \
   npx -y @modelcontextprotocol/server-filesystem \
-  "C:\\Users\\seane\\dev" \
+  "C:\\Users\\username\\dev" \
   "/mnt/dev/workspaces"
 ```
 
@@ -460,7 +460,7 @@ Claude config fragment:
     "--wsl", "--shell", "zsh",
     "--",
     "npx", "-y", "@modelcontextprotocol/server-filesystem",
-    "C:\\Users\\seane\\dev",
+    "C:\\Users\\username\\dev",
     "/mnt/dev/workspaces"
   ]
 }
