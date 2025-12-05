@@ -404,6 +404,8 @@ GitHub MCP Server (api.githubcopilot.com)
 
 Use these tested command lines when mirroring Claude Desktop’s configuration. Each snippet lists every flag that must be present for the server to launch successfully under Windows → WSL bridging.
 
+> **Windows quoting fix:** Claude Desktop launches stdio servers through `cmd.exe`. When it resolves `command: "npx"` to `C:\Program Files\nodejs\npx.cmd` the resulting command line is emitted without quotes, leading to the classic `'C:\Program' is not recognized` failure. Wrap every `npx` invocation inside `powershell.exe -NoLogo -NoProfile -Command "& { ... }"` so PowerShell handles the quoting before `cmd.exe` runs it.
+
 #### 1. Ghostis Brain (Python + WSL)
 
 Requirements:
@@ -424,11 +426,12 @@ Claude config fragment:
 
 ```json
 "ghostis-brain": {
-  "command": "npx",
+  "command": "powershell.exe",
   "args": [
-    "-y", "mcp-cross@latest",
-    "--wsl", "--shell", "zsh",
-    "--", "python3", "-m", "ghostis.mcp"
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& { npx -y mcp-cross@latest --wsl --shell zsh -- python3 -m ghostis.mcp }"
   ],
   "env": {
     "GHOSTIS_STORAGE_DIR": "/home/epps/.ghostis/memory",
@@ -456,14 +459,12 @@ Claude config fragment:
 
 ```json
 "filesystem": {
-  "command": "npx",
+  "command": "powershell.exe",
   "args": [
-    "-y", "mcp-cross@latest",
-    "--wsl", "--shell", "zsh",
-    "--",
-    "npx", "-y", "@modelcontextprotocol/server-filesystem",
-    "C:\\Users\\seane\\dev",
-    "/mnt/dev/workspaces"
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& { npx -y mcp-cross@latest --wsl --shell zsh -- npx -y @modelcontextprotocol/server-filesystem C:\\Users\\seane\\dev /mnt/dev/workspaces }"
   ]
 }
 ```
@@ -487,18 +488,17 @@ Claude config fragment:
 
 ```json
 "github-mcp-server": {
-  "command": "npx",
+  "command": "powershell.exe",
   "args": [
-    "-y", "mcp-cross@latest",
-    "--debug",
-    "--wsl", "--shell", "zsh",
-    "--http", "https://api.githubcopilot.com/mcp/",
-    "--header", "Authorization: Bearer $GH_TOKEN"
+    "-NoLogo",
+    "-NoProfile",
+    "-Command",
+    "& { npx -y mcp-cross@latest --debug --wsl --shell zsh --http https://api.githubcopilot.com/mcp/ --header 'Authorization: Bearer $GH_TOKEN' }"
   ]
 }
 ```
 
-> **Tip:** When testing from Windows PowerShell, keep the `$GH_TOKEN` literal inside single quotes and pass the actual value with `--env GH_TOKEN=$env:GH_TOKEN` so the proxy can expand it inside WSL exactly like Claude does.
+> **Tip:** When using the PowerShell wrapper (either manually or via Claude), keep `$GH_TOKEN` inside single quotes and pass the actual value with `--env GH_TOKEN=$env:GH_TOKEN` so the proxy can expand it inside WSL exactly like Claude does.
 
 ### Bridge Usage
 
@@ -527,12 +527,12 @@ mcp-cross --wsl cat C:\data.txt
 {
   "mcpServers": {
     "wsl-server": {
-      "command": "npx",
+      "command": "powershell.exe",
       "args": [
-        "mcp-cross",
-        "--wsl",
-        "node",
-        "/home/user/server.js"
+        "-NoLogo",
+        "-NoProfile",
+        "-Command",
+        "& { npx -y mcp-cross@latest --wsl node /home/user/server.js }"
       ]
     }
   }
@@ -658,6 +658,24 @@ Check the debug output for:
 - Path translation issues
 - Command resolution problems
 - Process spawning errors
+
+### `'C:\\Program' is not recognized`
+
+This happens when Claude Desktop (or any Windows host that shells through `cmd.exe`) resolves `command: "npx"` to `C:\Program Files\nodejs\npx.cmd` and runs it without surrounding quotes. Windows interprets everything up to the first space as the executable name, so `cmd.exe` tries to launch `C:\Program` and immediately fails.
+
+**Fix:** Wrap the entire `npx` invocation inside PowerShell so the quoting happens before `cmd.exe` ever sees the command line:
+
+```json
+"command": "powershell.exe",
+"args": [
+  "-NoLogo",
+  "-NoProfile",
+  "-Command",
+  "& { npx -y mcp-cross@latest --wsl --shell zsh -- ... }"
+]
+```
+
+All Claude Desktop examples in this README already use that wrapper. If you still prefer `command: "npx"`, move your Node.js installation to a path without spaces (or set `command` to a short path such as `C:\npx\npx.cmd`).
 
 ### Windows Executable Not Found in WSL
 

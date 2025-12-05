@@ -86,22 +86,38 @@ function parseHeader(headerString, env = process.env) {
     return { success: false, error: 'Header string must be a non-empty string' };
   }
 
-  // Split on first colon only
-  const colonIndex = headerString.indexOf(':');
+  const trimmedInput = headerString.trim();
+  if (trimmedInput.length === 0) {
+    return { success: false, error: 'Header string must be a non-empty string' };
+  }
+
+  let workingHeaderString = trimmedInput;
+  let colonIndex = workingHeaderString.indexOf(':');
+  let expandedEntireHeader = false;
+
+  if (colonIndex === -1) {
+    workingHeaderString = expandEnvVars(workingHeaderString, env).trim();
+    colonIndex = workingHeaderString.indexOf(':');
+    expandedEntireHeader = true;
+  }
+
   if (colonIndex === -1) {
     return { success: false, error: `Invalid header format: missing colon separator in "${headerString}"` };
   }
 
-  const name = headerString.substring(0, colonIndex).trim();
-  const originalValue = headerString.substring(colonIndex + 1).trim();
+  const name = workingHeaderString.substring(0, colonIndex).trim();
+  const rawValuePortion = workingHeaderString.substring(colonIndex + 1).trim();
 
   // Validate header name
   if (!isValidHeaderName(name)) {
     return { success: false, error: `Invalid header name: "${name}"` };
   }
 
-  // Expand environment variables
-  const value = expandEnvVars(originalValue, env);
+  // Preserve the user-provided representation for debugging/warnings
+  const originalValue = expandedEntireHeader ? trimmedInput : rawValuePortion;
+
+  // Expand environment variables in the value portion (safe even if already expanded)
+  const value = expandEnvVars(rawValuePortion, env);
 
   // Validate expanded value (no CRLF injection)
   if (!isValidHeaderValue(value)) {

@@ -4,7 +4,10 @@ npm-debug.log
 .pnpm-debug.log*
 .yarn/
 .DS_Store
+Thumbs.db
 *.log
+*.tmp
+*.swp
 .vscode/
 .idea/
 .env

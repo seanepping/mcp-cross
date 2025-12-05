@@ -1,5 +1,5 @@
 {
-  "current_focus": "Interactive local MCP server validation",
+  "current_focus": "Session wrap-up: env header parser fix",
   "focus_history": [
     {
       "focus": "Implement local node entry for Claude commands",
@@ -8,6 +8,18 @@
     {
       "focus": "Interactive local MCP server validation",
       "timestamp": "2025-12-04T00:17:36.556Z"
+    },
+    {
+      "focus": "Diagnose Claude  GitHub MCP proxy failure",
+      "timestamp": "2025-12-05T16:35:34.374Z"
+    },
+    {
+      "focus": "Implement env-first HTTP header parsing",
+      "timestamp": "2025-12-05T22:45:13.395Z"
+    },
+    {
+      "focus": "Session wrap-up: env header parser fix",
+      "timestamp": "2025-12-05T22:50:47.795Z"
     }
   ],
   "memories": [
@@ -16,6 +28,12 @@
       "content": "Validated manual CLI interactions for ghostis, filesystem, and GitHub HTTP proxy",
       "context": {},
       "timestamp": "2025-12-04T12:31:38.554Z"
+    },
+    {
+      "id": "cc439fed-8d8a-49f1-9e19-de6c95a9b390",
+      "content": "Enabled env-first header parsing for --header",
+      "context": {},
+      "timestamp": "2025-12-05T22:51:25.578Z"
     }
   ]
 }

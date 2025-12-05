@@ -10,6 +10,23 @@ const { platform } = require('os');
 const wslBridge = require('./src/lib/wsl-bridge');
 const { startHttpProxy } = require('./src/lib/http-proxy');
 
+function extractEnvVarsFromStrings(strings) {
+  if (!Array.isArray(strings)) return [];
+  const vars = new Set();
+  for (const value of strings) {
+    if (typeof value !== 'string') continue;
+    const regex = /\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-[^}]*)?\}|\$([A-Za-z_][A-Za-z0-9_]*)/g;
+    let match;
+    while ((match = regex.exec(value)) !== null) {
+      const name = match[1] || match[2];
+      if (name) {
+        vars.add(name);
+      }
+    }
+  }
+  return Array.from(vars);
+}
+
 /**
  * mcp-cross - Cross-platform MCP server bridge
  *
@@ -398,6 +415,17 @@ async function main() {
         wslArgs.push('--debug');
       }
 
+      if (mcpCrossOptions.includes('--debug')) {
+        const debugVars = extractEnvVarsFromStrings(httpHeaders);
+        if (debugVars.length > 0) {
+          const existing = customEnv.MCP_CROSS_DEBUG_VARS
+            ? customEnv.MCP_CROSS_DEBUG_VARS.split(',').map(v => v.trim()).filter(Boolean)
+            : [];
+          const merged = new Set([...existing, ...debugVars]);
+          customEnv.MCP_CROSS_DEBUG_VARS = Array.from(merged).join(',');
+        }
+      }
+
       try {
         await wslBridge.execute(wslCommand, wslArgs, mcpCrossOptions, customEnv);
       } catch (err) {
@@ -429,6 +457,16 @@ async function main() {
 
   // Check for WSL bridge mode (process bridge)
   if (mcpCrossOptions.includes('--wsl')) {
+    if (mcpCrossOptions.includes('--debug')) {
+      const debugVars = extractEnvVarsFromStrings([serverCommand, ...serverArgs]);
+      if (debugVars.length > 0) {
+        const existing = customEnv.MCP_CROSS_DEBUG_VARS
+          ? customEnv.MCP_CROSS_DEBUG_VARS.split(',').map(v => v.trim()).filter(Boolean)
+          : [];
+        const merged = new Set([...existing, ...debugVars]);
+        customEnv.MCP_CROSS_DEBUG_VARS = Array.from(merged).join(',');
+      }
+    }
     try {
       await wslBridge.execute(serverCommand, serverArgs, mcpCrossOptions, customEnv);
     } catch (err) {

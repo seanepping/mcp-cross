@@ -33,6 +33,31 @@ fi
 if [ -n "${MCP_CROSS_DEBUG-}" ]; then
   echo "DEBUG: FILTERED PATH=" >&2
   printenv PATH >&2
+
+  if [ -n "${MCP_CROSS_DEBUG_VARS-}" ]; then
+    OLD_IFS_ENV="$IFS"
+    IFS=','
+    read -ra DEBUG_VARS <<< "$MCP_CROSS_DEBUG_VARS"
+    IFS="$OLD_IFS_ENV"
+
+    for rawVar in "${DEBUG_VARS[@]}"; do
+      var="$(echo "$rawVar" | xargs)"
+      if [ -z "$var" ]; then
+        continue
+      fi
+
+      if [ -z "${!var+x}" ]; then
+        echo "DEBUG: ENV[$var]=<unset>" >&2
+      else
+        value="${!var}"
+        if [ -z "$value" ]; then
+          echo "DEBUG: ENV[$var]=<empty>" >&2
+        else
+          echo "DEBUG: ENV[$var]=<set length=${#value}>" >&2
+        fi
+      fi
+    done
+  fi
 fi
 
 # Exec the provided command

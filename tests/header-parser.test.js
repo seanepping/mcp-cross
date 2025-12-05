@@ -152,6 +152,15 @@ runTest('parseHeader: returns error for missing colon', () => {
   assert.ok(result.error.includes('missing colon'));
 });
 
+runTest('parseHeader: expands when entire header comes from env var', () => {
+  const env = { GH_HEADER: 'Authorization: Bearer env-secret' };
+  const result = parseHeader('$GH_HEADER', env);
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.header.name, 'Authorization');
+  assert.strictEqual(result.header.value, 'Bearer env-secret');
+  assert.strictEqual(result.header.originalValue, '$GH_HEADER');
+});
+
 runTest('parseHeader: returns error for invalid header name', () => {
   const result = parseHeader('Invalid Header: value', {});
   assert.strictEqual(result.success, false);
