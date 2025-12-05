@@ -1,6 +1,6 @@
 # mcp-cross
 
-Cross-platform MCP server bridge for seamless stdio communication across different environments, mainly for accessing linux mcp servers from windows in WSL2.
+Zero depedency ccross-platform MCP server bridge for seamless stdio communication across different environments, mainly for accessing linux mcp servers from windows in WSL2.
 
 ## Overview
 
@@ -8,13 +8,11 @@ Cross-platform MCP server bridge for seamless stdio communication across differe
 
 ## Release status
 
-> ⚠️ `mcp-cross` is currently shipped as a **pre-release (beta)** while we finish hardening Windows↔WSL workflows.
+### 1.1.0
 
-- Install globally with the beta dist-tag: `npm install -g mcp-cross@beta`
-- Run ad-hoc from npm: `npx mcp-cross@beta -- node server.js`
-- Pin a specific beta (e.g., `npm install -g mcp-cross@1.0.0-beta.0`) for deterministic test environments.
-
-Expect rapid iteration: features and flags may change between beta drops until we promote a stable `latest` release.
+- Install globally with the latest dist-tag: `npx mcp-cross@latest`
+- Run ad-hoc from npm: `npx mcp-cross@latest -- node server.js`
+- Pin a specific version (e.g., `npm install -g mcp-cross@1.0.0-beta.0`) for deterministic test environments.
 
 ### Key Features
 
@@ -733,6 +731,6 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 MIT
 
-## Credits
+## Next Steps
 
-Built for seamless MCP server integration across different AI coding environments, with special focus on WSL/Windows interoperability.
+- Ability to run in docker isolation and invoke a deterministic agent workload over stdio
